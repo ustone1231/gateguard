@@ -7,6 +7,14 @@
 - [ ] 공통 스키마 (`packages/schema`)
 - [ ] 루트 / 문서
 
+## PR 종류 / base 브랜치 확인
+<!-- 본 PR 의 base 가 맞는지 체크. 자세한 흐름은 docs/branching.md -->
+- [ ] `feature/*` → 자기 트랙 (`backend` / `ai` / `frontend` / `infra`)
+- [ ] 트랙 브랜치 → `develop` (트랙 리더의 주간 동기화)
+- [ ] `packages/schema` 변경 → `develop` 직접 (트랙 우회)
+- [ ] `release/*` → `main` (정식 릴리즈)
+- [ ] `hotfix/*` → `main` + `develop` (긴급 수정)
+
 ## 무엇을, 왜
 <!-- 한두 문장으로 -->
 

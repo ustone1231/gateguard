@@ -2,12 +2,13 @@ name: AI CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop, ai]
     paths:
       - "apps/ai/**"
       - "packages/schema/**"
       - ".github/workflows/ai-ci.yml"
   pull_request:
+    branches: [main, develop, ai]
     paths:
       - "apps/ai/**"
       - "packages/schema/**"

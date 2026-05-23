@@ -2,12 +2,13 @@ name: Infra CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop, infra]
     paths:
       - "apps/infra/**"
       - "docker-compose*.yml"
       - ".github/workflows/infra-ci.yml"
   pull_request:
+    branches: [main, develop, infra]
     paths:
       - "apps/infra/**"
       - "docker-compose*.yml"

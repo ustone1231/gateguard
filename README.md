@@ -41,18 +41,36 @@ gateguard/
 
 ## 협업 규칙 (한 페이지)
 
-### 권한 / 브랜치
-- 모든 협업자에게 Write 권한 부여 (Org 멤버라면 자동).
-- `main` 직접 push 금지 — **PR만**.
-- 작업 브랜치 명: `feat/짧은설명`, `fix/짧은설명`, `chore/...`
-- 머지 후 브랜치 삭제.
+### 브랜치 전략 — Git Flow + 트랙 브랜치 하이브리드
+
+자세한 가이드: [`docs/branching.md`](docs/branching.md)
+
+```
+main      ━━━━━━━━━━━━━━━━━━━━━━━ (production)
+              ▲              ▲
+              │ release      │ hotfix
+develop   ━●━━●━━●━━●━━●━━●━━━ (integration)
+           ▲   ▲   ▲   ▲
+        ┌──┴┐ ┌┴┐ ┌┴─┐ ┌┴───┐
+       backend ai front infra   (트랙 — 장기 통합)
+          ▲    ▲   ▲    ▲
+       feature/*  ...           (작업 단위)
+```
+
+**브랜치 7종:** `main` · `develop` · `backend` · `ai` · `frontend` · `infra` · `feature/*` (+ 필요시 `release/*` · `hotfix/*`)
+
+**일상 흐름:**
+1. 본인 트랙 브랜치에서 `feature/<track>-<설명>` 따기
+2. PR base 는 **본인 트랙 브랜치** (예: `feature/ai-day3` → `ai`)
+3. 트랙 리더가 주 1~2회 `트랙 → develop` 머지
+4. 릴리즈 시점에 `develop → release/v* → main`
 
 ### "본인 트랙 폴더만 만진다"
 - 시스템적 강제는 없지만, [`CODEOWNERS`](.github/CODEOWNERS) 가 본인 트랙 외 폴더를 건드린 PR에 다른 트랙 리더를 자동 리뷰어로 호출함.
 - 즉 권한은 다 있지만 사회적 알람이 작동.
 
 ### 트랙 간 인터페이스 변경
-- Event 페이로드 등 공통 스키마를 바꿔야 한다면 → **`packages/schema/` PR 먼저** → 슬랙 공지 → 각 트랙이 본인 폴더에서 따라옴.
+- Event 페이로드 등 공통 스키마를 바꿔야 한다면 → **`packages/schema/` PR 을 `develop` 에 직접** (트랙 우회) → 슬랙 공지 → 각 트랙이 본인 브랜치에서 따라옴.
 - **순서: "받는 쪽 (consumer) 먼저 배포, 보내는 쪽 (producer) 나중"** — 안 그러면 잠깐 깨짐.
 
 ### 커밋 메시지

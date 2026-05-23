@@ -1,0 +1,39 @@
+name: Schema CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "packages/schema/**"
+      - ".github/workflows/schema-ci.yml"
+  pull_request:
+    paths:
+      - "packages/schema/**"
+      - ".github/workflows/schema-ci.yml"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/schema
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install jsonschema
+        run: pip install jsonschema check-jsonschema
+
+      - name: Validate JSON Schema files are valid Draft 2020-12
+        run: |
+          check-jsonschema --check-metaschema events/event.schema.json
+          check-jsonschema --check-metaschema sections/gate_sections.schema.json
+
+      - name: Validate example payloads against schemas
+        run: |
+          check-jsonschema --schemafile events/event.schema.json examples/event_jump.json
+          check-jsonschema --schemafile sections/gate_sections.schema.json examples/gate_sections_sample.json

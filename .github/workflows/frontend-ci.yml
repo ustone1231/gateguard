@@ -1,0 +1,29 @@
+name: Frontend CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/frontend/**"
+      - "packages/schema/**"
+      - ".github/workflows/frontend-ci.yml"
+  pull_request:
+    paths:
+      - "apps/frontend/**"
+      - "packages/schema/**"
+      - ".github/workflows/frontend-ci.yml"
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      # TODO: 프론트 스택 결정 후 채울 것 (React/Next/Vue 등)
+      - name: Placeholder
+        run: |
+          echo "Frontend CI not configured yet. Add steps once stack is chosen."
+          test -f README.md

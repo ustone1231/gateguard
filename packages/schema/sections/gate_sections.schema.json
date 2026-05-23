@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gateguard.app/schemas/gate_sections/v0.1.0",
+  "title": "GateGuard GateSection Config",
+  "description": "카메라 1대당 게이트(개찰구) 섹션 정의. AI 파이프라인이 로드.",
+  "type": "object",
+  "required": ["camera_id", "frame_size", "sections"],
+  "properties": {
+    "camera_id": { "type": "string" },
+    "frame_size": {
+      "type": "object",
+      "required": ["width", "height"],
+      "properties": {
+        "width": { "type": "integer", "minimum": 1 },
+        "height": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "sections": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/GateSection" }
+    }
+  },
+  "additionalProperties": false,
+
+  "$defs": {
+    "GateSection": {
+      "type": "object",
+      "required": ["id", "polygon", "entry_line", "exit_line"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "이벤트의 gate_section_id 와 매칭됨."
+        },
+        "polygon": {
+          "type": "array",
+          "minItems": 3,
+          "items": { "$ref": "#/$defs/Point2D" },
+          "description": "게이트 통과 구역의 다각형 (픽셀 좌표)."
+        },
+        "entry_line": {
+          "$ref": "#/$defs/Line2D",
+          "description": "유료 입장 라인 (정상 통과 시 가로지름)."
+        },
+        "exit_line": {
+          "$ref": "#/$defs/Line2D",
+          "description": "출구 라인. 입장 없이 가로지르면 unpaid 이벤트."
+        },
+        "meta": {
+          "type": "object",
+          "description": "선택적 부가 정보 (예: name, station, direction).",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "Point2D": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": { "type": "number" }
+    },
+    "Line2D": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": { "$ref": "#/$defs/Point2D" },
+      "description": "두 점 [start, end] 로 정의된 선분."
+    }
+  }
+}

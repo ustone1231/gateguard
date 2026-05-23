@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gateguard.app/schemas/event/v0.1.0",
+  "title": "GateGuard Event",
+  "description": "AI 파이프라인이 백엔드 POST /api/events 로 발행하는 이벤트.",
+  "type": "object",
+  "required": [
+    "event_type",
+    "gate_section_id",
+    "camera_id",
+    "confidence",
+    "track_id",
+    "timestamp"
+  ],
+  "properties": {
+    "event_type": {
+      "type": "string",
+      "enum": ["jump", "crawling", "tailgating", "unpaid"],
+      "description": "탐지된 행동 유형."
+    },
+    "gate_section_id": {
+      "type": "string",
+      "description": "어느 게이트(개찰구)에서 발생했는지. GateSection.id와 매칭."
+    },
+    "camera_id": {
+      "type": "string",
+      "description": "이벤트를 만든 카메라 ID."
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "탐지 신뢰도."
+    },
+    "track_id": {
+      "type": "integer",
+      "description": "ByteTrack이 부여한 대상 객체 ID. 같은 사람은 같은 ID."
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 (예: 2026-05-23T03:42:11.123456+00:00)."
+    },
+    "clip_url": {
+      "type": ["string", "null"],
+      "description": "원본 클립 URL. AI는 null로 발행, Video Worker가 사후 업데이트."
+    },
+    "raw_meta": {
+      "type": "object",
+      "description": "룰별 부가 데이터 (예: jump의 top_speed_up_px_per_frame 등). 자유 형식.",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}

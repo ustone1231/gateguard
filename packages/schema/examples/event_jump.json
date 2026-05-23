@@ -1,0 +1,15 @@
+{
+  "event_type": "jump",
+  "gate_section_id": "gate_01",
+  "camera_id": "camera_001",
+  "confidence": 0.872,
+  "track_id": 7,
+  "timestamp": "2026-05-23T03:42:11.123456+00:00",
+  "clip_url": null,
+  "raw_meta": {
+    "top_speed_up_px_per_frame": 18.3,
+    "height_std_px": 42.1,
+    "frames_evaluated": 10,
+    "model_version": "yolo11n.pt@8.3.0"
+  }
+}

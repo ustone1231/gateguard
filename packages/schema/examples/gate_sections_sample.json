@@ -1,0 +1,21 @@
+{
+  "camera_id": "camera_001",
+  "frame_size": { "width": 1280, "height": 720 },
+  "sections": [
+    {
+      "id": "gate_01",
+      "polygon": [
+        [320, 100],
+        [520, 100],
+        [620, 700],
+        [250, 700]
+      ],
+      "entry_line": [[280, 600], [580, 600]],
+      "exit_line":  [[280, 200], [580, 200]],
+      "meta": {
+        "name": "1번 개찰구",
+        "direction": "in"
+      }
+    }
+  ]
+}

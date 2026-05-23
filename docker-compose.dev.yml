@@ -1,0 +1,79 @@
+# GateGuard dev 환경 — 4트랙 통합 실행 (stub)
+#
+# 인프라 트랙이 채울 자리. 각 트랙이 Dockerfile을 본인 폴더에 만들면
+# 여기서 build / depends_on 으로 묶어서 한 번에 띄움.
+#
+# 사용:
+#   docker compose -f docker-compose.dev.yml up
+#
+version: "3.9"
+
+services:
+  # ─── AI 워커 ────────────────────────────────────────
+  ai:
+    # build:
+    #   context: ./apps/ai
+    #   dockerfile: Dockerfile
+    image: gateguard-ai:dev
+    container_name: gateguard-ai
+    volumes:
+      - ./apps/ai/config:/app/config
+      - ./videos:/videos
+      - ./apps/ai/runs:/app/runs
+    environment:
+      - PYTHONUNBUFFERED=1
+      - BACKEND_URL=http://backend:8000
+    depends_on:
+      - backend
+    # TODO: 인프라가 Dockerfile 만들면 주석 해제
+
+  # ─── 백엔드 API ─────────────────────────────────────
+  backend:
+    # build:
+    #   context: ./apps/backend
+    image: gateguard-backend:dev
+    container_name: gateguard-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgres://gateguard:gateguard@db:5432/gateguard
+    depends_on:
+      - db
+    # TODO: 백엔드 스택 결정 후 채움
+
+  # ─── 프론트 ────────────────────────────────────────
+  frontend:
+    # build:
+    #   context: ./apps/frontend
+    image: gateguard-frontend:dev
+    container_name: gateguard-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    depends_on:
+      - backend
+    # TODO: 프론트 스택 결정 후 채움
+
+  # ─── DB ────────────────────────────────────────────
+  db:
+    image: timescale/timescaledb:latest-pg15
+    container_name: gateguard-db
+    environment:
+      - POSTGRES_USER=gateguard
+      - POSTGRES_PASSWORD=gateguard
+      - POSTGRES_DB=gateguard
+    ports:
+      - "5432:5432"
+    volumes:
+      - gateguard_db_data:/var/lib/postgresql/data
+
+  # ─── Redis (Celery 큐, WebSocket) ─────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: gateguard-redis
+    ports:
+      - "6379:6379"
+
+volumes:
+  gateguard_db_data:

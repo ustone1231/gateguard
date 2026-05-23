@@ -1,0 +1,36 @@
+# GateGuard CODEOWNERS
+#
+# 각 경로 변경 시 자동으로 리뷰어가 지정됩니다.
+# 형식: <path> <@github-handle> [@github-handle ...]
+#
+# TODO: 트랙별 담당자 GitHub handle을 채우세요.
+#       리더 1명 + 트랙 멤버를 적으면 PR 시 자동 호출됩니다.
+
+# ─── 전역 fallback (다른 패턴에 안 걸리는 모든 변경) ───
+*                       @ustone1231
+
+# ─── AI / CV 트랙 ────────────────────────────────────
+/apps/ai/               @ustone1231
+# /apps/ai/              @ustone1231 @ai-member-1 @ai-member-2
+
+# ─── 백엔드 트랙 ─────────────────────────────────────
+/apps/backend/          @ustone1231
+# /apps/backend/         @backend-lead @backend-member
+
+# ─── 프론트 트랙 ─────────────────────────────────────
+/apps/frontend/         @ustone1231
+# /apps/frontend/        @frontend-lead @frontend-member
+
+# ─── 인프라 트랙 ─────────────────────────────────────
+/apps/infra/            @ustone1231
+# /apps/infra/           @infra-lead
+
+# ─── 공통 스키마 (모든 트랙에 영향) ───────────────────
+/packages/schema/       @ustone1231
+# /packages/schema/      @ustone1231 @backend-lead @ai-lead
+
+# ─── 루트 설정 / CI / 문서 (리드만 수정) ──────────────
+/.github/               @ustone1231
+/docker-compose*.yml    @ustone1231
+/README.md              @ustone1231
+/docs/                  @ustone1231

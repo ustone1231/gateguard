@@ -1,0 +1,32 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/backend/**"
+      - "packages/schema/**"
+      - ".github/workflows/backend-ci.yml"
+  pull_request:
+    paths:
+      - "apps/backend/**"
+      - "packages/schema/**"
+      - ".github/workflows/backend-ci.yml"
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/backend
+    steps:
+      - uses: actions/checkout@v4
+
+      # TODO: 백엔드 스택 결정 후 채울 것
+      # - Python (Django/FastAPI):   setup-python + pip install + pytest
+      # - Node (Nest/Express):        setup-node + npm ci + npm test
+      # - Java (Spring):              setup-java + ./gradlew test
+      - name: Placeholder
+        run: |
+          echo "Backend CI not configured yet. Add steps once stack is chosen."
+          test -f README.md

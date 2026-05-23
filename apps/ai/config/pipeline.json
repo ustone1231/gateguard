@@ -1,0 +1,50 @@
+{
+  "model": {
+    "weights": "yolo11n.pt",
+    "device": "auto",
+    "conf_threshold": 0.4,
+    "iou_threshold": 0.5,
+    "classes": [0]
+  },
+  "tracker": {
+    "type": "bytetrack",
+    "config": "bytetrack.yaml"
+  },
+  "rules": {
+    "jump": {
+      "enabled": true,
+      "top_speed_threshold": 15.0,
+      "height_std_threshold": 30.0,
+      "min_history_frames": 10,
+      "cooldown_seconds": 3.0
+    },
+    "crawling": {
+      "enabled": true,
+      "height_ratio_threshold": 0.55,
+      "min_frames_crawling": 8,
+      "cooldown_seconds": 3.0
+    },
+    "tailgating": {
+      "enabled": true,
+      "max_gap_seconds": 1.5,
+      "cooldown_seconds": 3.0
+    },
+    "unpaid": {
+      "enabled": true,
+      "cooldown_seconds": 5.0
+    }
+  },
+  "publisher": {
+    "type": "file",
+    "_comment_type_options": ["file", "http"],
+    "file_path": "runs/events.jsonl",
+    "http_endpoint": "http://localhost:8000/api/events",
+    "http_timeout": 2.0,
+    "http_token": null
+  },
+  "pipeline": {
+    "camera_id": "camera_001",
+    "save_annotated_video": true,
+    "output_dir": "runs"
+  }
+}

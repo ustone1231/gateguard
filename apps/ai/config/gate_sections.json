@@ -1,0 +1,26 @@
+{
+  "_comment": "Zone Editor가 생성할 데이터 형식과 동일. MVP에선 손으로 작성.",
+  "_coord_note": "좌표는 영상 픽셀 기준. 실제 운영 시엔 정규화 좌표 변환 권장.",
+  "camera_id": "camera_001",
+  "frame_size": {"width": 1280, "height": 720},
+  "sections": [
+    {
+      "id": "gate_01",
+      "section_no": 1,
+      "name": "1번 개찰구",
+      "polygon": [[320, 100], [520, 100], [620, 700], [250, 700]],
+      "entry_line": [[280, 600], [580, 600]],
+      "exit_line":  [[280, 200], [580, 200]],
+      "active": true
+    },
+    {
+      "id": "gate_02",
+      "section_no": 2,
+      "name": "2번 개찰구",
+      "polygon": [[640, 100], [840, 100], [940, 700], [570, 700]],
+      "entry_line": [[600, 600], [900, 600]],
+      "exit_line":  [[600, 200], [900, 200]],
+      "active": true
+    }
+  ]
+}

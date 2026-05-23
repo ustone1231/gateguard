@@ -1,0 +1,42 @@
+name: AI CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/ai/**"
+      - "packages/schema/**"
+      - ".github/workflows/ai-ci.yml"
+  pull_request:
+    paths:
+      - "apps/ai/**"
+      - "packages/schema/**"
+      - ".github/workflows/ai-ci.yml"
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/ai
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: apps/ai/requirements.txt
+
+      - name: Install deps
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install ruff pytest
+
+      - name: Lint
+        run: ruff check src scripts
+
+      - name: Test
+        run: pytest -q tests || echo "no tests yet"

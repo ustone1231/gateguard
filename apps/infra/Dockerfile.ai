@@ -1,0 +1,26 @@
+# GateGuard AI 트랙 컨테이너
+# 빌드: docker build -t gateguard-ai:dev -f apps/infra/Dockerfile.ai apps/ai/
+# 실행: docker run --rm --gpus all gateguard-ai:dev
+
+FROM pytorch/pytorch:2.5.1-cuda12.1-cudnn9-runtime
+
+# 시스템 의존성 (opencv 동작에 필요)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ffmpeg \
+    libgl1 \
+    libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# 의존성 캐싱 — requirements.txt 먼저 복사
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# 소스 코드
+COPY . .
+
+ENV PYTHONUNBUFFERED=1
+
+# 기본 실행 — day10 풀 파이프라인
+CMD ["python", "scripts/day10_full_pipeline.py", "/videos/input.mp4"]

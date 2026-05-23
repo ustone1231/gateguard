@@ -41,29 +41,27 @@ gateguard/
 
 ## 협업 규칙 (한 페이지)
 
-### 브랜치 전략 — Git Flow + 트랙 브랜치 하이브리드
+### 브랜치 전략 — Git Flow
 
 자세한 가이드: [`docs/branching.md`](docs/branching.md)
 
 ```
-main      ━━━━━━━━━━━━━━━━━━━━━━━ (production)
-              ▲              ▲
-              │ release      │ hotfix
-develop   ━●━━●━━●━━●━━●━━●━━━ (integration)
-           ▲   ▲   ▲   ▲
-        ┌──┴┐ ┌┴┐ ┌┴─┐ ┌┴───┐
-       backend ai front infra   (트랙 — 장기 통합)
-          ▲    ▲   ▲    ▲
-       feature/*  ...           (작업 단위)
+main     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ (production)
+                 ▲                    ▲
+                 │ release            │ hotfix
+develop  ●━●━●━━●━━●━━●━━●━━●━━━━━━━━●━━━ (개발 통합)
+            ▲      ▲      ▲
+       feature/x  feature/y  feature/z       (작업)
 ```
 
-**브랜치 7종:** `main` · `develop` · `backend` · `ai` · `frontend` · `infra` · `feature/*` (+ 필요시 `release/*` · `hotfix/*`)
+**브랜치 5종:** `main` · `develop` · `feature/*` · `release/*` · `hotfix/*`
 
-**일상 흐름:**
-1. 본인 트랙 브랜치에서 `feature/<track>-<설명>` 따기
-2. PR base 는 **본인 트랙 브랜치** (예: `feature/ai-day3` → `ai`)
-3. 트랙 리더가 주 1~2회 `트랙 → develop` 머지
-4. 릴리즈 시점에 `develop → release/v* → main`
+**일상 흐름 (95% 의 작업):**
+1. `develop` 에서 `feature/<설명>` 따기
+2. 작업 후 PR base = `develop`
+3. 리뷰 통과 → 머지 → 브랜치 삭제
+
+**릴리즈/긴급 수정** 은 [`docs/branching.md`](docs/branching.md) 참고.
 
 ### "본인 트랙 폴더만 만진다"
 - 시스템적 강제는 없지만, [`CODEOWNERS`](.github/CODEOWNERS) 가 본인 트랙 외 폴더를 건드린 PR에 다른 트랙 리더를 자동 리뷰어로 호출함.

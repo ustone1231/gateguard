@@ -2,7 +2,7 @@ name: Schema CI
 
 on:
   push:
-    branches: [main, develop, ai, backend, frontend, infra]
+    branches: [main, develop]
     paths:
       - "packages/schema/**"
       - ".github/workflows/schema-ci.yml"

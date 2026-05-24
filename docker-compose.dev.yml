@@ -11,21 +11,28 @@ version: "3.9"
 services:
   # ─── AI 워커 ────────────────────────────────────────
   ai:
-    # build:
-    #   context: ./apps/ai
-    #   dockerfile: Dockerfile
+    build:
+      context: ./apps/ai
+      dockerfile: ../infra/Dockerfile.ai
     image: gateguard-ai:dev
     container_name: gateguard-ai
     volumes:
-      - ./apps/ai/config:/app/config
+      - ./apps/ai/config:/app/config:ro
       - ./videos:/videos
       - ./apps/ai/runs:/app/runs
     environment:
       - PYTHONUNBUFFERED=1
       - BACKEND_URL=http://backend:8000
+      - YOLO_CONFIG_DIR=/tmp/Ultralytics
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
     depends_on:
       - backend
-    # TODO: 인프라가 Dockerfile 만들면 주석 해제
 
   # ─── 백엔드 API ─────────────────────────────────────
   backend:

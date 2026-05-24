@@ -1,0 +1,5 @@
+# 이 폴더는 docker-compose가 컨테이너 안의 /videos 로 마운트합니다
+# 테스트 영상을 ./videos/input.mp4 로 두면 ai 컨테이너가 그걸 입력으로 사용합니다다
+# Dockerfile.ai 의 CMD 기본값: python scripts/day10_full_pipeline.py /videos/input.mp4
+#
+# 영상 파일 자체는 git에 올리가지 않습니다(용량이커서서) .gitkeep만 폴더 존재 보장용으로 커밋.

@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gateguard.app/schemas/fare-tap/v0.1.0",
+  "title": "GateGuard FareTap",
+  "description": "AFC(Automatic Fare Collection) 시스템이 백엔드 POST /api/fare-taps 로 발행하는 결제 트랜잭션. 백엔드 매칭 엔진이 동일 게이트의 gate_passage 이벤트와 ±N초 윈도로 매칭하여 무임승차 여부 확정.",
+  "type": "object",
+  "required": [
+    "event_type",
+    "gate_section_id",
+    "card_id_hash",
+    "timestamp",
+    "result"
+  ],
+  "properties": {
+    "event_type": {
+      "type": "string",
+      "const": "fare_tap",
+      "description": "고정값. 다른 이벤트 스트림과 구분."
+    },
+    "gate_section_id": {
+      "type": "string",
+      "description": "결제가 발생한 게이트 ID. GateSection.id 및 Event.gate_section_id 와 매칭."
+    },
+    "card_id_hash": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "교통카드 ID 의 salted SHA-256 해시. 원본 ID 저장 금지 (개인정보 보호). salt 는 운영 환경별 분리."
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 (UTC 또는 timezone-aware). AFC 게이트 컨트롤러의 NTP 동기화된 시각. AI Event.timestamp 와 ±1초 매칭."
+    },
+    "result": {
+      "type": "string",
+      "enum": ["approved", "denied", "error"],
+      "description": "결제 처리 결과. approved 만 매칭에 사용. denied/error 는 분석용으로 저장."
+    },
+    "raw_meta": {
+      "type": "object",
+      "description": "AFC 시스템별 부가 데이터. 운영사/단말기 별 형식 자유.",
+      "properties": {
+        "fare_amount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "결제 금액 (원)."
+        },
+        "card_type": {
+          "type": "string",
+          "description": "예: T-money, 캐시비, 신용카드 등."
+        },
+        "terminal_id": {
+          "type": "string",
+          "description": "AFC 단말기 ID (게이트당 1대 이상일 수 있음)."
+        },
+        "denied_reason": {
+          "type": "string",
+          "description": "result=denied 일 때 사유 (잔액 부족, 카드 만료 등)."
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}

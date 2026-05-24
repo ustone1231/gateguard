@@ -32,8 +32,10 @@ jobs:
         run: |
           check-jsonschema --check-metaschema events/event.schema.json
           check-jsonschema --check-metaschema sections/gate_sections.schema.json
+          check-jsonschema --check-metaschema fare-taps/fare_tap.schema.json
 
       - name: Validate example payloads against schemas
         run: |
           check-jsonschema --schemafile events/event.schema.json examples/event_jump.json
           check-jsonschema --schemafile sections/gate_sections.schema.json examples/gate_sections_sample.json
+          check-jsonschema --schemafile fare-taps/fare_tap.schema.json examples/fare_tap_approved.json examples/fare_tap_denied.json

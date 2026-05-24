@@ -1,0 +1,13 @@
+{
+  "event_type": "fare_tap",
+  "gate_section_id": "gate_02",
+  "card_id_hash": "sha256:ff998877665544332211aabbccddeeff00112233445566778899aabbccddee01",
+  "timestamp": "2026-05-23T03:45:22.456789+00:00",
+  "result": "denied",
+  "raw_meta": {
+    "fare_amount": 0,
+    "card_type": "T-money",
+    "terminal_id": "term_002_a",
+    "denied_reason": "insufficient_balance"
+  }
+}

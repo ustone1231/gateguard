@@ -46,14 +46,22 @@ def segments_intersect(seg_a: Line, seg_b: Line) -> bool:
 def line_crossing_direction(prev: Point, curr: Point, line: Line) -> int:
     """이전→현재 이동이 선을 가로질렀다면 방향 부호 반환.
 
-    return 0: 가로지르지 않음
-    return +1: line의 '왼쪽→오른쪽' 통과
-    return -1: line의 '오른쪽→왼쪽' 통과
-    (왼/오 정의는 line의 시작→끝 벡터 기준)
+    반환값:
+        0    가로지르지 않음
+        +1   line 의 한 쪽 → 반대 쪽 통과
+        -1   그 반대 방향 통과
+
+    부호의 절대 의미 (정상 통행 / 역방향) 는 호출자가 정의한다.
+    같은 line 에서 +1 과 -1 이 항상 반대 방향이라는 점만 보장.
+    "entry vs exit" 은 line 종류 (entry_line, exit_line) 로 구분하고,
+    어느 부호가 "정상 입장" 인지는 호출자가 카메라 설치 기준으로 매핑한다.
+
+    구현 주의: line 의 시작→끝 벡터 기준 외적 부호 사용.
+    화면 좌표계 (y 아래로 양수) 에서 그대로 동작.
     """
     if not segments_intersect((prev, curr), line):
         return 0
     (x1, y1), (x2, y2) = line
-    # line 시작점 기준 prev의 부호
+    # line 시작점 기준 prev 의 외적 부호 (화면 좌표계)
     sign_prev = (x2 - x1) * (prev[1] - y1) - (y2 - y1) * (prev[0] - x1)
     return 1 if sign_prev < 0 else -1

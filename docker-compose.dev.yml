@@ -6,8 +6,6 @@
 # 사용:
 #   docker compose -f docker-compose.dev.yml up
 #
-version: "3.9"
-
 services:
   # ─── AI 워커 ────────────────────────────────────────
   ai:

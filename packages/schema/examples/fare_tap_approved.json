@@ -1,8 +1,10 @@
 {
+  "fare_tap_id": "tap_20260528034211_001a",
   "event_type": "fare_tap",
   "gate_section_id": "gate_01",
   "card_id_hash": "sha256:ab123456789012345678901234567890abcdef0123456789012345678901cdef",
-  "timestamp": "2026-05-23T03:42:11.001234+00:00",
+  "card_category": "regular",
+  "timestamp": "2026-05-28T03:42:11.001234+00:00",
   "result": "approved",
   "raw_meta": {
     "fare_amount": 1370,

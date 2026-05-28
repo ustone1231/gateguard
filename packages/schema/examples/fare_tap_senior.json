@@ -1,0 +1,14 @@
+{
+  "fare_tap_id": "tap_20260528034522_a1b2c3",
+  "event_type": "fare_tap",
+  "gate_section_id": "gate_01",
+  "card_id_hash": "sha256:fe98765432109876543210fedcba9876543210abcdef0123456789abcdef0123",
+  "card_category": "senior",
+  "timestamp": "2026-05-28T03:45:22.301000+00:00",
+  "result": "approved",
+  "raw_meta": {
+    "fare_amount": 0,
+    "card_type": "Senior_Pass",
+    "terminal_id": "term_001_a"
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "event_id": "evt_e5f60a1b2c3d4e5f60a1b2c3d4e5f60a",
+  "event_type": "confirmed_misuse",
+  "gate_section_id": "gate_01",
+  "camera_id": "camera_001",
+  "confidence": 0.91,
+  "track_id": 13,
+  "timestamp": "2026-05-28T03:45:22.500000+00:00",
+  "source_event_id": "evt_c3d4e5f60a1b2c3d4e5f60a1b2c3d4e5",
+  "clip_url": null,
+  "reliability": "high",
+  "severity": "warning",
+  "signals": {
+    "face_age_estimate": 32.5,
+    "pose_senior_score": 0.08,
+    "gait_senior_score": 0.12,
+    "assistive_device_detected": false,
+    "assistive_device_type": null,
+    "senior_probability": 0.11
+  },
+  "afc_match": {
+    "fare_tap_id": "tap_20260528034522_a1b2c3",
+    "card_id_hash": "sha256:fe98765432109876543210fedcba9876543210abcdef0123456789abcdef0123",
+    "card_category": "senior",
+    "tap_timestamp": "2026-05-28T03:45:22.301000+00:00",
+    "time_delta_ms": -1
+  },
+  "raw_meta": {
+    "decision_rule": "afc_match.card_category in [senior, child] && signals.senior_probability < 0.20",
+    "min_reliability_required": "high"
+  }
+}

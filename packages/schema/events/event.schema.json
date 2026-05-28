@@ -1,10 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://gateguard.app/schemas/event/v0.1.0",
+  "$id": "https://gateguard.app/schemas/event/v0.2.1",
   "title": "GateGuard Event",
-  "description": "AI 파이프라인이 백엔드 POST /api/events 로 발행하는 이벤트.",
+  "description": "AI 파이프라인 또는 백엔드 매칭 엔진이 발행하는 이벤트. v0.2.1 에서 발행자별 event_type 명확화: AI 는 행동 신호 발행 (gate_passage / jump / crawling / tailgating / unpaid=우회), 백엔드는 AFC 매칭 후 confirmed_* 발행 (confirmed_unpaid / confirmed_misuse).",
   "type": "object",
   "required": [
+    "event_id",
     "event_type",
     "gate_section_id",
     "camera_id",
@@ -13,41 +14,142 @@
     "timestamp"
   ],
   "properties": {
+    "event_id": {
+      "type": "string",
+      "pattern": "^evt_[a-f0-9]{32}$",
+      "description": "발행자가 발급하는 이벤트 unique ID. 형식: evt_<uuid4 hex 32자>. 백엔드 멱등성 키 — 같은 event_id 재수신 시 중복 저장 금지."
+    },
     "event_type": {
       "type": "string",
-      "enum": ["jump", "crawling", "tailgating", "unpaid"],
-      "description": "탐지된 행동 유형."
+      "enum": [
+        "gate_passage",
+        "jump",
+        "crawling",
+        "tailgating",
+        "unpaid",
+        "confirmed_unpaid",
+        "confirmed_misuse"
+      ],
+      "description": "AI 발행: gate_passage (entry/exit line 통과 시), jump, crawling, tailgating, unpaid (=우회/역방향, 결제 없음 의미 아님). 백엔드 발행: confirmed_unpaid (gate_passage + fare_tap 매칭 실패), confirmed_misuse (gate_passage + fare_tap 매칭 + card_category=senior/child + senior_probability 낮음)."
     },
     "gate_section_id": {
       "type": "string",
-      "description": "어느 게이트(개찰구)에서 발생했는지. GateSection.id와 매칭."
+      "description": "어느 게이트(개찰구)에서 발생했는지. GateSection.id 와 매칭."
     },
     "camera_id": {
       "type": "string",
-      "description": "이벤트를 만든 카메라 ID."
+      "description": "이벤트를 만든 카메라 ID. 백엔드 발행 이벤트는 source event 의 camera_id 를 그대로 사용."
     },
     "confidence": {
       "type": "number",
       "minimum": 0,
       "maximum": 1,
-      "description": "탐지 신뢰도."
+      "description": "탐지 신뢰도. AI 룰은 룰별 합성 점수, 백엔드 confirmed_* 는 매칭 품질 (time_delta 등 반영)."
     },
     "track_id": {
       "type": "integer",
-      "description": "ByteTrack이 부여한 대상 객체 ID. 같은 사람은 같은 ID."
+      "minimum": 1,
+      "description": "ByteTrack 이 부여한 대상 객체 ID. 같은 사람은 같은 ID. 양의 정수 (음수/0 거부). 백엔드 발행 이벤트는 source event 의 track_id 를 그대로 사용."
     },
     "timestamp": {
       "type": "string",
       "format": "date-time",
-      "description": "ISO-8601 (예: 2026-05-23T03:42:11.123456+00:00)."
+      "description": "ISO-8601 timezone-aware UTC. 예: 2026-05-28T03:42:11.123456+00:00. AI 의 gate_passage 는 line crossing 시각, 백엔드 confirmed_* 는 판정 완료 시각."
+    },
+    "source_event_id": {
+      "type": ["string", "null"],
+      "pattern": "^evt_[a-f0-9]{32}$",
+      "description": "v0.2.1 신규. 백엔드 발행 confirmed_* event 가 참조하는 원본 AI event (보통 gate_passage) 의 event_id. AI 발행 event 는 null."
     },
     "clip_url": {
       "type": ["string", "null"],
-      "description": "원본 클립 URL. AI는 null로 발행, Video Worker가 사후 업데이트."
+      "description": "원본 클립 URL. AI 는 null 로 발행, 백엔드 Video Worker 가 사후 업데이트."
+    },
+    "signals": {
+      "type": "object",
+      "description": "v0.2.0 신규. 다중 신호 분석 결과. AI 의 gate_passage event 가 senior_classifier 결과를 첨부. misuse 판정의 근거로 백엔드가 활용.",
+      "properties": {
+        "face_age_estimate": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 120,
+          "description": "얼굴 나이 추정값 (MiVOLO). 얼굴 미검출 시 null."
+        },
+        "pose_senior_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "자세 기반 노인 가능성 점수. 척추 각도, 어깨 곡선 등."
+        },
+        "gait_senior_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "보행 기반 노인 가능성 점수. 속도, 보폭, 흔들림."
+        },
+        "assistive_device_detected": {
+          "type": "boolean",
+          "description": "지팡이/워커/휠체어 등 보조기구 검출 여부."
+        },
+        "assistive_device_type": {
+          "type": ["string", "null"],
+          "enum": ["cane", "walker", "wheelchair", null],
+          "description": "v0.2.1 신규. 검출된 보조기구 종류. assistive_device_detected=true 일 때만."
+        },
+        "senior_probability": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 1,
+          "description": "위 신호들의 가중 합. 백엔드 misuse 판정 기준."
+        }
+      },
+      "additionalProperties": false
+    },
+    "reliability": {
+      "type": "string",
+      "enum": ["low", "mid", "high"],
+      "description": "v0.2.0 신규. 측정 신뢰도. 백엔드/프론트엔드의 알림 우선순위에 사용."
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["info", "warning", "critical"],
+      "description": "v0.2.0 신규. 알림 강도. 프론트엔드 알림음/시각 강조 결정. 보통 AI 발행 event 는 info/warning, 백엔드 confirmed_* 는 warning/critical."
+    },
+    "afc_match": {
+      "type": ["object", "null"],
+      "description": "v0.2.0 신규. 백엔드 매칭 엔진이 채우는 fare_tap 매칭 메타. AI 는 발행 시 null. confirmed_* event 또는 매칭 성공한 gate_passage event 에 채워짐.",
+      "properties": {
+        "fare_tap_id": {
+          "type": "string",
+          "pattern": "^tap_[a-zA-Z0-9_-]+$",
+          "description": "매칭된 fare_tap 의 ID."
+        },
+        "card_id_hash": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$",
+          "description": "매칭된 카드의 해시."
+        },
+        "card_category": {
+          "type": "string",
+          "enum": ["regular", "senior", "child", "disabled", "national_merit"],
+          "description": "매칭된 카드의 자격 종류."
+        },
+        "tap_timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "매칭된 fare_tap 의 timestamp."
+        },
+        "time_delta_ms": {
+          "type": "integer",
+          "description": "event.timestamp 와 fare_tap.timestamp 의 차이 (밀리초). 매칭 품질 지표."
+        }
+      },
+      "required": ["fare_tap_id", "card_id_hash", "card_category", "tap_timestamp"],
+      "additionalProperties": false
     },
     "raw_meta": {
       "type": "object",
-      "description": "룰별 부가 데이터 (예: jump의 top_speed_up_px_per_frame 등). 자유 형식.",
+      "description": "룰별 부가 데이터 (예: jump 의 top_speed_up_px_per_frame, crawling 의 height_ratio, 백엔드 매칭 엔진의 판정 사유 등). 자유 형식.",
       "additionalProperties": true
     }
   },

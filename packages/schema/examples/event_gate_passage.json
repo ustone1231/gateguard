@@ -1,0 +1,29 @@
+{
+  "event_id": "evt_c3d4e5f60a1b2c3d4e5f60a1b2c3d4e5",
+  "event_type": "gate_passage",
+  "gate_section_id": "gate_01",
+  "camera_id": "camera_001",
+  "confidence": 0.95,
+  "track_id": 13,
+  "timestamp": "2026-05-28T03:45:22.300000+00:00",
+  "clip_url": null,
+  "reliability": "high",
+  "severity": "info",
+  "signals": {
+    "face_age_estimate": 32.5,
+    "pose_senior_score": 0.08,
+    "gait_senior_score": 0.12,
+    "assistive_device_detected": false,
+    "assistive_device_type": null,
+    "senior_probability": 0.11
+  },
+  "raw_meta": {
+    "crossed_line": "entry",
+    "frames_evaluated": 18,
+    "model_versions": {
+      "detector": "yolo11n.pt@8.3.0",
+      "pose": "yolov8n-pose.pt@8.3.0",
+      "age": "mivolo_d1_kr.pth@0.1.0"
+    }
+  }
+}

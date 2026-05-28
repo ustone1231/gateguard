@@ -1,18 +1,29 @@
 """공통 데이터 타입.
 
-md 문서의 이벤트 페이로드 스키마와 1:1 매칭.
-백엔드 POST /api/events 요청 본문이 Event 인스턴스를 그대로 직렬화한 형태.
+packages/schema/events/event.schema.json v0.2.1 와 1:1 매칭.
+백엔드 POST /api/v1/events 요청 본문이 Event 인스턴스를 그대로 직렬화한 형태.
+
+발행자 책임:
+  - AI 트랙: gate_passage, jump, crawling, tailgating, unpaid (=우회/역방향)
+  - 백엔드: confirmed_unpaid, confirmed_misuse (AI event + AFC fare_tap 매칭 후)
 """
 from __future__ import annotations
 
+import uuid
 from dataclasses import dataclass, field, asdict
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 
 BBox = tuple[float, float, float, float]  # (x1, y1, x2, y2)
 Point = tuple[float, float]
 Line = tuple[Point, Point]
+
+
+Reliability = Literal["low", "mid", "high"]
+Severity = Literal["info", "warning", "critical"]
+CardCategory = Literal["regular", "senior", "child", "disabled", "national_merit"]
+AssistiveDeviceType = Literal["cane", "walker", "wheelchair"]
 
 
 @dataclass
@@ -32,20 +43,54 @@ class Track:
 
 
 @dataclass
-class Event:
-    """백엔드 POST /api/events 페이로드와 동일.
+class Signals:
+    """v0.2.0 신규. 다중 신호 분석 결과.
 
-    md 명세 필드:
-      event_type, gate_section_id, camera_id, confidence,
-      clip_url, track_id, timestamp, raw_meta
+    AI 의 gate_passage event 에 senior_classifier 결과를 첨부.
+    백엔드가 fare_tap 매칭 후 misuse 판정 시 활용.
     """
-    event_type: str            # jump | crawling | tailgating | unpaid
+    face_age_estimate: Optional[float] = None
+    pose_senior_score: Optional[float] = None
+    gait_senior_score: Optional[float] = None
+    assistive_device_detected: Optional[bool] = None
+    assistive_device_type: Optional[AssistiveDeviceType] = None  # v0.2.1 신규
+    senior_probability: Optional[float] = None
+
+
+@dataclass
+class AfcMatch:
+    """v0.2.0 신규. 백엔드 매칭 엔진이 채우는 fare_tap 매칭 결과.
+
+    AI 는 발행 시 None 으로 둠. 백엔드가 ±1초 윈도로 매칭 후 업데이트.
+    """
+    fare_tap_id: str
+    card_id_hash: str
+    card_category: CardCategory
+    tap_timestamp: str
+    time_delta_ms: Optional[int] = None
+
+
+@dataclass
+class Event:
+    """백엔드 POST /api/v1/events 페이로드와 동일 (schema v0.2.1).
+
+    v0.2.1: event_type enum 재정의 — AI 발행 (gate_passage/jump/crawling/tailgating/unpaid) +
+            백엔드 발행 (confirmed_unpaid/confirmed_misuse). source_event_id 추가 (백엔드 confirmed_* 가 원본 참조).
+            assistive_device_type 추가.
+    """
+    event_type: str            # gate_passage | jump | crawling | tailgating | unpaid | confirmed_unpaid | confirmed_misuse
     gate_section_id: str       # gate_01 등
     camera_id: str
     confidence: float
     track_id: int
-    timestamp: str             # ISO8601
+    timestamp: str             # ISO-8601 UTC timezone-aware
+    event_id: str = field(default_factory=lambda: f"evt_{uuid.uuid4().hex}")
+    source_event_id: Optional[str] = None  # v0.2.1 신규. 백엔드 confirmed_* 가 참조하는 원본 event_id
     clip_url: Optional[str] = None
+    signals: Optional[Signals] = None
+    reliability: Optional[Reliability] = None
+    severity: Optional[Severity] = None
+    afc_match: Optional[AfcMatch] = None
     raw_meta: dict[str, Any] = field(default_factory=dict)
 
     @staticmethod
@@ -53,6 +98,16 @@ class Event:
         return datetime.now(timezone.utc).isoformat()
 
     def to_payload(self) -> dict[str, Any]:
-        """백엔드로 보낼 JSON 페이로드. None은 빼고 보냄."""
+        """백엔드로 보낼 JSON 페이로드. None 은 빼고 보냄.
+
+        중첩 dataclass (signals, afc_match) 도 내부 None 필드 제거.
+        """
         d = asdict(self)
-        return {k: v for k, v in d.items() if v is not None}
+        d = {k: v for k, v in d.items() if v is not None}
+        if "signals" in d and isinstance(d["signals"], dict):
+            d["signals"] = {k: v for k, v in d["signals"].items() if v is not None}
+            if not d["signals"]:
+                del d["signals"]
+        if "afc_match" in d and isinstance(d["afc_match"], dict):
+            d["afc_match"] = {k: v for k, v in d["afc_match"].items() if v is not None}
+        return d

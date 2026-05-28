@@ -1,17 +1,24 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://gateguard.app/schemas/fare-tap/v0.1.0",
+  "$id": "https://gateguard.app/schemas/fare-tap/v0.2.1",
   "title": "GateGuard FareTap",
-  "description": "AFC(Automatic Fare Collection) 시스템이 백엔드 POST /api/fare-taps 로 발행하는 결제 트랜잭션. 백엔드 매칭 엔진이 동일 게이트의 gate_passage 이벤트와 ±N초 윈도로 매칭하여 무임승차 여부 확정.",
+  "description": "AFC(Automatic Fare Collection) 시스템 (또는 MVP Mock AFC 송신기) 가 백엔드 POST /api/v1/fare-taps 로 발행하는 결제 트랜잭션. 백엔드 매칭 엔진이 동일 게이트의 AI Event (gate_passage 등) 와 ±1초 윈도로 매칭하여 confirmed_unpaid / confirmed_misuse 판정. v0.2.1 에서 fare_tap_id (멱등성 키) 추가.",
   "type": "object",
   "required": [
+    "fare_tap_id",
     "event_type",
     "gate_section_id",
     "card_id_hash",
+    "card_category",
     "timestamp",
     "result"
   ],
   "properties": {
+    "fare_tap_id": {
+      "type": "string",
+      "pattern": "^tap_[a-zA-Z0-9_-]+$",
+      "description": "v0.2.1 신규. 발신자 (AFC 또는 Mock) 가 발급하는 unique ID. 백엔드 멱등성 키 — 같은 fare_tap_id 재수신 시 중복 저장 금지. 권장 형식: tap_<timestamp_ms>_<random> 또는 AFC 내부 트랜잭션 ID."
+    },
     "event_type": {
       "type": "string",
       "const": "fare_tap",
@@ -24,12 +31,17 @@
     "card_id_hash": {
       "type": "string",
       "pattern": "^sha256:[a-f0-9]{64}$",
-      "description": "교통카드 ID 의 salted SHA-256 해시. 원본 ID 저장 금지 (개인정보 보호). salt 는 운영 환경별 분리."
+      "description": "교통카드 ID 의 salted SHA-256 해시. 원본 ID 저장 금지 (개인정보 보호). salt 는 운영 환경별 분리. Mock AFC 송신기와 백엔드가 동일 salt 공유 (env CARD_HASH_SALT)."
+    },
+    "card_category": {
+      "type": "string",
+      "enum": ["regular", "senior", "child", "disabled", "national_merit"],
+      "description": "v0.2.0 신규. 카드의 자격 종류 (할인/면제 기준). 결제 수단(T-money/캐시비 등)이 아님 — 그건 raw_meta.card_type. 백엔드 confirmed_misuse 판정의 매칭 키."
     },
     "timestamp": {
       "type": "string",
       "format": "date-time",
-      "description": "ISO-8601 (UTC 또는 timezone-aware). AFC 게이트 컨트롤러의 NTP 동기화된 시각. AI Event.timestamp 와 ±1초 매칭."
+      "description": "ISO-8601 timezone-aware UTC. AFC 게이트 컨트롤러의 NTP 동기화된 시각. AI Event.timestamp 와 ±1초 매칭."
     },
     "result": {
       "type": "string",
@@ -47,7 +59,7 @@
         },
         "card_type": {
           "type": "string",
-          "description": "예: T-money, 캐시비, 신용카드 등."
+          "description": "결제 수단. 예: T-money, 캐시비, 신용카드, Senior_Pass. card_category (자격) 와 혼동 금지."
         },
         "terminal_id": {
           "type": "string",

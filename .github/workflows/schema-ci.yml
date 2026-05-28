@@ -36,6 +36,13 @@ jobs:
 
       - name: Validate example payloads against schemas
         run: |
-          check-jsonschema --schemafile events/event.schema.json examples/event_jump.json
+          check-jsonschema --schemafile events/event.schema.json \
+            examples/event_jump.json \
+            examples/event_gate_passage.json \
+            examples/event_confirmed_unpaid.json \
+            examples/event_confirmed_misuse.json
           check-jsonschema --schemafile sections/gate_sections.schema.json examples/gate_sections_sample.json
-          check-jsonschema --schemafile fare-taps/fare_tap.schema.json examples/fare_tap_approved.json examples/fare_tap_denied.json
+          check-jsonschema --schemafile fare-taps/fare_tap.schema.json \
+            examples/fare_tap_approved.json \
+            examples/fare_tap_denied.json \
+            examples/fare_tap_senior.json

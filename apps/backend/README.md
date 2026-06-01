@@ -70,17 +70,41 @@ cp .env.example .env
 #   VIDEO_CLIP_DIR=/var/lib/gateguard/clips
 #   VIDEO_CLIP_TTL_HOURS=24
 
-# DB 마이그레이션
-alembic upgrade head
-
 # 개발 서버
 uvicorn app.main:app --reload --port 8000
+```
 
-# 매칭 엔진 워커 (별도 프로세스)
-python -m app.matching_engine.worker
+현재 첫 서버 마일스톤은 **in-memory MVP API** 입니다. DB 마이그레이션, 별도 매칭 워커, 영상 클립 cron 은 다음 마일스톤에서 붙입니다.
 
-# 영상 클립 삭제 cron (또는 systemd timer)
-python scripts/cleanup_clips.py    # 24h 경과 클립 삭제
+### 저장소 모드
+
+기본값은 빠른 개발용 in-memory 저장소입니다.
+
+```bash
+uvicorn app.main:app --reload --port 8000
+```
+
+DB 저장소를 검증하려면 `STORAGE_BACKEND=sql` 과 `DATABASE_URL` 을 지정합니다.
+
+```bash
+STORAGE_BACKEND=sql \
+DATABASE_URL=sqlite:///./dev-gateguard.db \
+uvicorn app.main:app --reload --port 8000
+```
+
+Docker compose 환경에서는 `STORAGE_BACKEND=sql` 과 Postgres `DATABASE_URL` 을 사용합니다.
+
+### 서버 확인
+
+```bash
+curl http://localhost:8000/health
+```
+
+운영자 조회 API 는 개발용 토큰을 사용합니다.
+
+```bash
+curl -H "Authorization: Bearer dev-jwt-secret-please-change-before-prod" \
+  http://localhost:8000/api/v1/events
 ```
 
 ---

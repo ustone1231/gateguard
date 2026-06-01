@@ -62,6 +62,7 @@ outputs/
 # ─── Misc ──────────────────────────────────
 *.bak
 *.tmp
+*.db
 coverage/
 .coverage
 htmlcov/

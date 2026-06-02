@@ -1,9 +1,10 @@
-"""실제 백엔드 연동용 Publisher. POST /api/events.
+"""실제 백엔드 연동용 Publisher. POST /api/v1/events.
 
 특징:
 - requests로 동기 POST (가벼움)
 - 실패 시 로컬 JSONL에 fallback 저장 → 백엔드 복구 후 재전송 가능
 - Bearer 토큰 옵션 (md의 OAuth2/JWT)
+- endpoint 는 full URL (factory.resolve_http_endpoint 가 결정 — Issue #3)
 """
 from __future__ import annotations
 

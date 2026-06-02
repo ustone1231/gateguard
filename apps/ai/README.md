@@ -1,7 +1,7 @@
 # GateGuard AI/CV Pipeline
 
 영상 → 사람 탐지 → 추적 → 섹션 매칭 → 룰 판정 → 이벤트 발행.
-백엔드 POST `/api/events` 와 연동되는 추론 파이프라인.
+백엔드 POST `/api/v1/events` 와 연동되는 추론 파이프라인.
 
 ## 빠른 시작
 
@@ -54,7 +54,7 @@ gateguard-ai/
 | 이벤트 페이로드 (event_type, gate_section_id, ...) | `src/types.py` Event |
 | 4종 룰 + cooldown + confidence | `src/rules/` |
 | model_versions 추적 | `Detector.model_version` → `Event.raw_meta` |
-| POST /api/events | `src/publisher/http_publisher.py` |
+| POST /api/v1/events | `src/publisher/http_publisher.py` |
 
 ## 백엔드 연동
 
@@ -65,7 +65,7 @@ gateguard-ai/
 {
   "publisher": {
     "type": "http",                          // file → http
-    "http_endpoint": "http://backend:8000/api/events",
+    "http_endpoint": "http://backend:8000",  // base URL only
     "http_timeout": 2.0,
     "http_token": "Bearer 토큰"
   }
@@ -73,6 +73,17 @@ gateguard-ai/
 ```
 
 이게 끝. 파이프라인은 재실행만.
+
+#### endpoint 우선순위 (Issue #3)
+
+`HttpPublisher` 가 백엔드 호출에 쓰는 URL 결정 규칙:
+
+1. `BACKEND_URL` env (예: docker-compose 의 `BACKEND_URL=http://backend:8000`)
+2. `pipeline.json` 의 `publisher.http_endpoint`
+3. `http://localhost:8000` (개발 fallback)
+
+세 경우 모두 **base URL** 만 받고, path `/api/v1/events` 는 코드에서 결합 (`src/pipeline/factory.py` `resolve_http_endpoint`).
+컨테이너 배포 시 인프라가 env 만 주입하면 config 수정 없이 동작.
 
 ### 2. POST 페이로드 (백엔드가 받는 형식)
 

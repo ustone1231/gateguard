@@ -38,7 +38,8 @@
     "type": "file",
     "_comment_type_options": ["file", "http"],
     "file_path": "runs/events.jsonl",
-    "http_endpoint": "http://localhost:8000/api/events",
+    "http_endpoint": "http://localhost:8000",
+    "_comment_http_endpoint": "base URL only (path /api/v1/events appended in factory). BACKEND_URL env overrides this.",
     "http_timeout": 2.0,
     "http_token": null
   },

@@ -6,6 +6,7 @@ config/pipeline.json 한 곳만 보면 전체 셋업이 어떻게 구성됐는�
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 from ..detector import YoloDetector
@@ -17,6 +18,19 @@ from ..rules import (
 from ..zone import SectionMatcher, load_sections
 from .pipeline import Pipeline
 from .visualizer import Visualizer
+
+EVENTS_PATH = "/api/v1/events"
+DEFAULT_BACKEND_BASE_URL = "http://localhost:8000"
+
+
+def resolve_http_endpoint(pipeline_endpoint: str | None) -> str:
+    """이벤트 발행 full URL 결정.
+
+    우선순위: BACKEND_URL env > pipeline.json http_endpoint > localhost fallback.
+    입력은 base URL (예: http://backend:8000), 반환은 path 결합한 full URL.
+    """
+    base = os.getenv("BACKEND_URL") or pipeline_endpoint or DEFAULT_BACKEND_BASE_URL
+    return f"{base.rstrip('/')}{EVENTS_PATH}"
 
 
 def build_from_config(
@@ -77,7 +91,7 @@ def build_from_config(
     pub_cfg = cfg["publisher"]
     if pub_cfg["type"] == "http":
         publisher = HttpPublisher(
-            endpoint=pub_cfg["http_endpoint"],
+            endpoint=resolve_http_endpoint(pub_cfg.get("http_endpoint")),
             timeout=pub_cfg.get("http_timeout", 2.0),
             token=pub_cfg.get("http_token"),
             fallback_path=pub_cfg.get("file_path", "runs/events_failed.jsonl"),

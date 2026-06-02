@@ -149,7 +149,7 @@ pipeline → 모든 모듈 (통합 책임이라 정상)
 ### 🔴 `src/rules/` + `src/publisher/` — 민지 (#7 Event Rule Engineer)
 - **[P0] 동일 트랙 다중 발화 완화** — day10 에서 같은 jump 가 4번 발화. cooldown 만으론 부족 → confidence 평균화 / 트랙 평활화 도입
 - **[P1] crawling / unpaid 룰 실증** — 시나리오 영상 직접 촬영 후 회귀 테스트로 등록
-- **[P1] HttpPublisher `BACKEND_URL` env 지원** — 인프라 PR #1 후속 (현재 `pipeline.json` 만 읽음)
+- **[x] HttpPublisher `BACKEND_URL` env 지원** — 인프라 PR #1 후속, 트랙 lead 가 선처리 (Issue #3 closes)
 - **[P1] rules / publisher 단위 테스트 추가**
 
 ### 🔴 `dataset/` + `scripts/` — 수웅 (#5 Data / Annotation)

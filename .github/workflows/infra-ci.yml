@@ -22,4 +22,9 @@ jobs:
       - name: Validate docker-compose.dev.yml
         run: docker compose -f docker-compose.dev.yml config --quiet
 
-      # TODO: terraform fmt/validate, hadolint Dockerfile 등 추가
+      - name: Lint Dockerfile (hadolint)
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: apps/infra/Dockerfile.ai
+
+      # TODO: terraform fmt/validate 추가 (terraform 도입 시)

@@ -60,7 +60,7 @@ outputs/
 !*.tfvars.example
 
 # ─── Claude (personal) ─────────────────────
-CLAUDE.local.md
+/CLAUDE.local.md
 
 # ─── Misc ──────────────────────────────────
 *.bak

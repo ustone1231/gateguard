@@ -7,11 +7,13 @@ on:
       - "apps/infra/**"
       - "docker-compose*.yml"
       - ".github/workflows/infra-ci.yml"
+      - ".hadolint.yaml"
   pull_request:
     paths:
       - "apps/infra/**"
       - "docker-compose*.yml"
       - ".github/workflows/infra-ci.yml"
+      - ".hadolint.yaml"
 
 jobs:
   validate:

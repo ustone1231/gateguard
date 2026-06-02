@@ -11,7 +11,7 @@ from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from typing import Optional
 
-from ..types import BBox, Event, Track
+from ..types import BBox, Event
 from ..zone import GateSection
 
 

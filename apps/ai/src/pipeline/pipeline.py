@@ -16,7 +16,7 @@ import cv2
 from ..detector import Detector
 from ..tracker import Tracker
 from ..publisher import EventPublisher
-from ..rules import Rule, RuleEngine, TrackHistory
+from ..rules import RuleEngine, TrackHistory
 from ..rules.base import TrackSnapshot
 from ..zone import GateSection, SectionMatcher
 from ..zone.geometry import foot_point, line_crossing_direction

@@ -16,7 +16,7 @@ import cv2
 import numpy as np
 from src.detector import YoloDetector
 from src.tracker import ByteTrackTracker
-from src.zone import SectionMatcher, load_sections
+from src.zone import load_sections
 from src.zone.geometry import foot_point, line_crossing_direction
 
 
@@ -24,7 +24,6 @@ def main(video_path: str) -> None:
     detector = YoloDetector(weights="yolo11n.pt")
     tracker = ByteTrackTracker()
     camera_id, sections = load_sections("config/gate_sections.json")
-    matcher = SectionMatcher(sections)
     detector.warmup()
 
     cap = cv2.VideoCapture(video_path)

@@ -1,14 +1,31 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from datetime import datetime
+
+from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect, status
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 
 from app.api.deps import require_afc_token, require_ai_token, require_operator_token
 from app.core.config import settings
 from app.models import EventCreate, FareTap
+from app.services.realtime import event_manager
 from app.services.runtime import store
+from app.services.stats import loss_estimate_payload, stats_payload
 from app.services.store import now_utc
+from app.services.video_clips import (
+    cleanup_expired_clips,
+    clip_path_for_event,
+    signed_clip_url,
+    validate_signed_clip,
+)
 
 router = APIRouter()
+
+
+def flush_matching_if_available() -> None:
+    if hasattr(store, "flush_matching"):
+        store.flush_matching()
 
 
 @router.get("/health")
@@ -18,7 +35,7 @@ def health() -> dict:
 
 @router.post("/api/v1/auth/login")
 def login(payload: dict) -> dict:
-    # MVP dev auth: real password/JWT is the next milestone.
+    # TODO: real JWT/password verification. MVP dev auth returns a static operator token.
     if not payload.get("username") or not payload.get("password"):
         raise HTTPException(status_code=400, detail={"code": "bad_request"})
     return {
@@ -28,8 +45,8 @@ def login(payload: dict) -> dict:
     }
 
 
-@router.post("/api/v1/events", status_code=status.HTTP_201_CREATED)
-def create_event(event: EventCreate, _: None = Depends(require_ai_token)) -> dict:
+@router.post("/api/v1/events")
+async def create_event(event: EventCreate, _: None = Depends(require_ai_token)) -> JSONResponse:
     stored, deduped, derived = store.save_event(event)
     response = {
         "event_id": stored.event_id,
@@ -39,11 +56,14 @@ def create_event(event: EventCreate, _: None = Depends(require_ai_token)) -> dic
         response["deduped"] = True
     if derived:
         response["derived_event_ids"] = [event.event_id for event in derived]
-    return response
+    if not deduped:
+        await event_manager.broadcast("event_new", jsonable_encoder(stored))
+    await broadcast_derived_events(derived)
+    return ingest_response(response, deduped)
 
 
-@router.post("/api/v1/fare-taps", status_code=status.HTTP_201_CREATED)
-def create_fare_tap(tap: FareTap, _: None = Depends(require_afc_token)) -> dict:
+@router.post("/api/v1/fare-taps")
+async def create_fare_tap(tap: FareTap, _: None = Depends(require_afc_token)) -> JSONResponse:
     stored, deduped, derived = store.save_fare_tap(tap)
     response = {
         "fare_tap_id": stored.fare_tap_id,
@@ -53,7 +73,25 @@ def create_fare_tap(tap: FareTap, _: None = Depends(require_afc_token)) -> dict:
         response["deduped"] = True
     if derived:
         response["derived_event_ids"] = [event.event_id for event in derived]
-    return response
+    await broadcast_derived_events(derived)
+    return ingest_response(response, deduped)
+
+
+async def broadcast_derived_events(derived) -> None:
+    for event in derived:
+        await event_manager.broadcast("event_new", jsonable_encoder(event))
+        if event.event_type == "confirmed_misuse":
+            await event_manager.broadcast(
+                "review_queue_added",
+                {"queue_id": f"rq_{event.event_id[4:]}", "event_id": event.event_id},
+            )
+
+
+def ingest_response(response: dict, deduped: bool) -> JSONResponse:
+    return JSONResponse(
+        status_code=status.HTTP_200_OK if deduped else status.HTTP_201_CREATED,
+        content=jsonable_encoder(response),
+    )
 
 
 @router.get("/api/v1/events")
@@ -64,6 +102,7 @@ def list_events(
     severity: str | None = None,
     limit: int = Query(default=50, ge=1, le=200),
 ) -> dict:
+    flush_matching_if_available()
     events = store.list_events(
         event_type=event_type,
         gate_section_id=gate_section_id,
@@ -75,10 +114,33 @@ def list_events(
 
 @router.get("/api/v1/events/{event_id}")
 def get_event(event_id: str, _: None = Depends(require_operator_token)):
+    flush_matching_if_available()
     event = store.events.get(event_id)
     if not event:
         raise HTTPException(status_code=404, detail={"code": "not_found"})
     return event
+
+
+@router.get("/api/v1/events/{event_id}/video-clip")
+def get_event_video_clip(event_id: str, _: None = Depends(require_operator_token)):
+    cleanup_expired_clips()
+    event = store.events.get(event_id)
+    if not event:
+        raise HTTPException(status_code=404, detail={"code": "not_found"})
+    return RedirectResponse(url=signed_clip_url(event), status_code=status.HTTP_302_FOUND)
+
+
+@router.get("/api/v1/video-clips/{event_id}")
+def download_signed_video_clip(event_id: str, expires: int, sig: str):
+    cleanup_expired_clips()
+    validate_signed_clip(event_id, expires, sig)
+    event = store.events.get(event_id)
+    if not event:
+        raise HTTPException(status_code=404, detail={"code": "not_found"})
+    path = clip_path_for_event(event)
+    if path is None:
+        raise HTTPException(status_code=404, detail={"code": "clip_not_found"})
+    return FileResponse(path)
 
 
 @router.get("/api/v1/review-queue")
@@ -86,6 +148,7 @@ def review_queue(
     _: None = Depends(require_operator_token),
     status_filter: str = Query(default="pending", alias="status"),
 ) -> dict:
+    flush_matching_if_available()
     if hasattr(store, "list_review_queue"):
         rows = store.list_review_queue(status_filter=status_filter)
     else:
@@ -131,15 +194,65 @@ def review_feedback(
 
 
 @router.get("/api/v1/stats")
-def stats(_: None = Depends(require_operator_token)) -> dict:
-    by_type: dict[str, int] = {}
-    by_gate: dict[str, int] = {}
-    for event in store.events.values():
-        by_type[event.event_type] = by_type.get(event.event_type, 0) + 1
-        by_gate[event.gate_section_id] = by_gate.get(event.gate_section_id, 0) + 1
-    return {
-        "period": "all",
-        "total": len(store.events),
-        "by_type": by_type,
-        "by_gate": by_gate,
-    }
+def stats(
+    _: None = Depends(require_operator_token),
+    period: str = Query(default="day", pattern="^(day|week|month)$"),
+    period_from: datetime | None = Query(default=None, alias="from"),
+    period_to: datetime | None = Query(default=None, alias="to"),
+    gate_section_id: str | None = None,
+) -> dict:
+    flush_matching_if_available()
+    return stats_payload(
+        list(store.events.values()),
+        period=period,
+        period_from=period_from,
+        period_to=period_to,
+        gate_section_id=gate_section_id,
+    )
+
+
+@router.get("/api/v1/loss-estimate")
+def loss_estimate(
+    _: None = Depends(require_operator_token),
+    period_from: datetime | None = Query(default=None, alias="from"),
+    period_to: datetime | None = Query(default=None, alias="to"),
+    unit_loss_krw: int = Query(default=1370, ge=0),
+) -> dict:
+    flush_matching_if_available()
+    return loss_estimate_payload(
+        list(store.events.values()),
+        period_from=period_from,
+        period_to=period_to,
+        unit_loss_krw=unit_loss_krw,
+    )
+
+
+@router.websocket("/ws/v1/events")
+async def websocket_events(websocket: WebSocket, token: str | None = None, since: str | None = None):
+    if token != settings.jwt_secret:
+        await websocket.close(code=4401, reason="unauthorized")
+        return
+
+    await event_manager.connect(websocket)
+    try:
+        await send_missed_events(websocket, since)
+        await event_manager.heartbeat(websocket)
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        event_manager.disconnect(websocket)
+
+
+async def send_missed_events(websocket: WebSocket, since: str | None) -> None:
+    if not since:
+        return
+    events = list(store.events.values())
+    marker = next((event for event in events if event.event_id == since), None)
+    if marker is None:
+        return
+    missed = sorted(
+        (event for event in events if event.stored_at > marker.stored_at),
+        key=lambda event: event.stored_at,
+    )
+    for event in missed:
+        await websocket.send_json({"type": "event_new", "data": jsonable_encoder(event)})

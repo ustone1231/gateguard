@@ -74,7 +74,13 @@ cp .env.example .env
 uvicorn app.main:app --reload --port 8000
 ```
 
-현재 첫 서버 마일스톤은 **in-memory MVP API** 입니다. DB 마이그레이션, 별도 매칭 워커, 영상 클립 cron 은 다음 마일스톤에서 붙입니다.
+현재 서버 마일스톤은 **배포 가능한 Backend MVP** 입니다.
+
+- in-memory / SQL 저장소 모드 지원
+- `gate_passage` ↔ `fare_tap` ±1초 매칭 + 1초 buffer
+- `confirmed_unpaid` / `confirmed_misuse` 파생 이벤트 발행
+- denied fare tap 후 approved 가 없을 때 `confirmed_unpaid` 처리
+- WebSocket 알림, 통계, 손실 추정, 영상 클립 서명 URL + 24h cleanup 지원
 
 ### 저장소 모드
 
@@ -106,6 +112,23 @@ curl http://localhost:8000/health
 curl -H "Authorization: Bearer dev-jwt-secret-please-change-before-prod" \
   http://localhost:8000/api/v1/events
 ```
+
+### 구현된 API 빠른 확인
+
+| 기능 | Endpoint |
+|------|----------|
+| AI 이벤트 수신 | `POST /api/v1/events` |
+| AFC fare tap 수신 | `POST /api/v1/fare-taps` |
+| 이벤트 조회 | `GET /api/v1/events`, `GET /api/v1/events/{event_id}` |
+| 영상 클립 서명 redirect | `GET /api/v1/events/{event_id}/video-clip` |
+| 검토 큐 | `GET /api/v1/review-queue`, `POST /api/v1/review-queue/{queue_id}/feedback` |
+| 통계 | `GET /api/v1/stats?period=day&from=...&to=...` |
+| 손실 추정 | `GET /api/v1/loss-estimate?unit_loss_krw=1370` |
+| 실시간 알림 | `WS /ws/v1/events?token=<access_token>` |
+
+WebSocket 메시지는 `event_new`, `review_queue_added`, `heartbeat` 타입을 전송합니다.
+영상 클립은 `VIDEO_CLIP_DIR` 아래 `<event_id>.mp4|.mov|.webm` 또는 event `clip_url` 상대경로를 찾고,
+인증된 `/video-clip` 요청에서 5분 유효한 내부 서명 URL 로 redirect 합니다.
 
 ---
 
@@ -143,6 +166,12 @@ def on_gate_passage(passage):
 
 **buffer 정책 (§11-2):** gate_passage / fare_tap 둘 다 도착 후 1초 보관 → 늦은 짝 매칭 가능.
 
+구현 메모:
+- `approved` fare tap 만 gate_passage 와 1:1 매칭됩니다.
+- `denied` / `error` fare tap 은 저장하지만 매칭 키로 사용하지 않습니다.
+- `denied` tap 이 ±1초 내 존재하고, 같은 window 안에 `approved` tap 이 없으면 buffer 이후 `confirmed_unpaid` 를 발행합니다.
+- 파생 이벤트는 멱등적으로 생성되어 같은 source event 에 대해 중복 발행되지 않습니다.
+
 ---
 
 ## 테스트
@@ -153,6 +182,14 @@ def on_gate_passage(passage):
 | 매칭 엔진 알고리즘 | pytest + 시뮬레이션 fixture | `tests/test_matching_engine.py` |
 | API 통합 테스트 | pytest + httpx | `tests/integration/` |
 | 스키마 round-trip | `check-jsonschema` | CI 자동 |
+
+로컬 검증:
+
+```bash
+cd apps/backend
+venv/bin/pytest -q
+python3 -m compileall -q app tests
+```
 
 ---
 

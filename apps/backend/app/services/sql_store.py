@@ -119,6 +119,7 @@ class SqlStore:
         severity: str | None = None,
         limit: int = 50,
     ) -> list[Event]:
+        self.flush_matching()
         with self.session_factory() as session:
             query = select(EventRow).order_by(EventRow.timestamp.desc())
             if event_type:
@@ -132,6 +133,7 @@ class SqlStore:
 
     @property
     def events(self) -> dict[str, Event]:
+        self.flush_matching()
         with self.session_factory() as session:
             rows = session.execute(select(EventRow)).scalars().all()
             return {row.event_id: event_from_row(row) for row in rows}
@@ -142,6 +144,7 @@ class SqlStore:
         return {row["queue_id"]: row for row in rows}
 
     def list_review_queue(self, status_filter: str = "pending") -> list[dict]:
+        self.flush_matching()
         with self.session_factory() as session:
             self._sync_review_queue(session)
             query = select(ReviewQueueRow).order_by(ReviewQueueRow.added_at.desc())
@@ -172,6 +175,7 @@ class SqlStore:
             return self._review_queue_payload(session, row)
 
     def get_event(self, event_id: str) -> Event:
+        self.flush_matching()
         with self.session_factory() as session:
             row = session.get(EventRow, event_id)
             if row is None:
@@ -185,6 +189,9 @@ class SqlStore:
                 raise KeyError(fare_tap_id)
             return fare_tap_from_row(row)
 
+    def flush_matching(self) -> list[Event]:
+        return self._run_matching()
+
     def _run_matching(self) -> list[Event]:
         hydrated = InMemoryStore()
         with self.session_factory() as session:
@@ -197,10 +204,7 @@ class SqlStore:
         hydrated.matched_fare_tap_ids.update(row.fare_tap_id for row in match_rows)
 
         before = set(hydrated.events)
-        derived: list[Event] = []
-        for event in list(hydrated.events.values()):
-            if event.event_type == "gate_passage":
-                derived.extend(hydrated._run_matching_for_event(event))
+        derived = hydrated.flush_matching()
 
         with self.session_factory() as session:
             for event_id, event in hydrated.events.items():
@@ -227,7 +231,8 @@ class SqlStore:
                     self._ensure_review_queue_item(session, event)
             session.commit()
 
-        return [hydrated.events[event_id] for event_id in set(hydrated.events) - before]
+        derived_ids = set(hydrated.events) - before
+        return [event for event in derived if event.event_id in derived_ids]
 
     def _sync_review_queue(self, session: Session) -> None:
         events = session.execute(

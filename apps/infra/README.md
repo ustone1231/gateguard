@@ -35,6 +35,8 @@ apps/infra/
 | 변수 | 서비스 | 값 (dev) | 설명 |
 |------|--------|----------|------|
 | `BACKEND_URL` | `ai` | `http://backend:8000` | AI HttpPublisher가 이벤트를 POST할 백엔드 base URL. 우선순위: env > `pipeline.json http_endpoint` > `localhost:8000` fallback (이슈 #3) |
+| `AI_SERVICE_TOKEN` | `ai`, `backend` | `dev-ai-service-token-please-change-32` | AI → 백엔드 `/api/v1/events` 호출용 Bearer 토큰. AI와 백엔드 값이 같아야 함 |
+| `AFC_SERVICE_TOKEN` | `backend` | `dev-afc-service-token-please-change-32` | Mock AFC → 백엔드 `/api/v1/fare-taps` 호출용 Bearer 토큰 |
 | `DATABASE_URL` | `backend` | `postgres://gateguard:gateguard@db:5432/gateguard` | 백엔드 → TimescaleDB 연결 |
 | `NEXT_PUBLIC_API_URL` | `frontend` | `http://localhost:8000` | 브라우저에서 백엔드 API 호출 시 사용 |
 

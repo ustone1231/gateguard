@@ -25,6 +25,7 @@ services:
       # AI HttpPublisher 우선순위: BACKEND_URL env > pipeline.json http_endpoint > localhost:8000
       # base URL 만 전달 — path(/api/v1/events)는 AI 코드에서 결합 (이슈 #3 합의)
       - BACKEND_URL=http://backend:8000
+      - AI_SERVICE_TOKEN=dev-ai-service-token-please-change-32
       - YOLO_CONFIG_DIR=/tmp/Ultralytics
     deploy:
       resources:

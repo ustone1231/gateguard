@@ -20,9 +20,12 @@ class TrackSnapshot:
     frame_idx: int
     timestamp_sec: float
     bbox: BBox
+    confidence: float = 1.0
     section_id: Optional[str] = None
     crossed_entry: Optional[str] = None   # 어느 section의 entry line을 가로질렀나
     crossed_exit: Optional[str] = None
+    crossed_entry_direction: Optional[int] = None
+    crossed_exit_direction: Optional[int] = None
 
 
 @dataclass

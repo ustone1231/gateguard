@@ -30,6 +30,14 @@ apps/infra/
   인프라는 그것들을 `docker-compose` 로 묶고, 배포/네트워크/볼륨을 결정.
 - 즉 트랙 컨테이너 안 = 트랙 책임 / 컨테이너 밖 = 인프라 책임.
 
+## 서비스 간 환경변수
+
+| 변수 | 서비스 | 값 (dev) | 설명 |
+|------|--------|----------|------|
+| `BACKEND_URL` | `ai` | `http://backend:8000` | AI HttpPublisher가 이벤트를 POST할 백엔드 base URL. 우선순위: env > `pipeline.json http_endpoint` > `localhost:8000` fallback (이슈 #3) |
+| `DATABASE_URL` | `backend` | `postgres://gateguard:gateguard@db:5432/gateguard` | 백엔드 → TimescaleDB 연결 |
+| `NEXT_PUBLIC_API_URL` | `frontend` | `http://localhost:8000` | 브라우저에서 백엔드 API 호출 시 사용 |
+
 ## 시작하기
 
 ```bash
@@ -37,8 +45,9 @@ cd /path/to/gateguard
 docker compose -f docker-compose.dev.yml up
 ```
 
-현재는 stub. 각 트랙이 Dockerfile 채울 때마다 `docker-compose.dev.yml` 에서
+각 트랙이 Dockerfile을 채울 때마다 `docker-compose.dev.yml` 에서
 해당 서비스의 `build:` / `image:` 를 주석 해제.
+현재 완료된 트랙: `ai` (Dockerfile.ai).
 
 ## 릴리즈 절차
 

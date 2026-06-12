@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, Integer, String, Text, UniqueConstraint, create_engine, select
+from sqlalchemy import DateTime, Float, Integer, String, Text, UniqueConstraint, create_engine, select
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
 from app.models import Event, EventCreate, FareTap
@@ -22,6 +22,11 @@ class EventRow(Base):
     camera_id: Mapped[str] = mapped_column(String(120), index=True)
     timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     severity: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
+    source_event_id: Mapped[str | None] = mapped_column(String(40), nullable=True, index=True)
+    confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    track_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    reliability: Mapped[str | None] = mapped_column(String(10), nullable=True, index=True)
+    clip_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     payload_json: Mapped[str] = mapped_column(Text)
     stored_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
@@ -33,6 +38,8 @@ class FareTapRow(Base):
     gate_section_id: Mapped[str] = mapped_column(String(120), index=True)
     timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     result: Mapped[str] = mapped_column(String(20), index=True)
+    card_id_hash: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    card_category: Mapped[str | None] = mapped_column(String(30), nullable=True, index=True)
     payload_json: Mapped[str] = mapped_column(Text)
     stored_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
@@ -49,6 +56,29 @@ class FareMatchRow(Base):
     fare_tap_id: Mapped[str] = mapped_column(String(120), index=True)
     time_delta_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     matched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class CameraRow(Base):
+    __tablename__ = "cameras"
+
+    camera_id: Mapped[str] = mapped_column(String(120), primary_key=True)
+    frame_width: Mapped[int] = mapped_column(Integer, nullable=False)
+    frame_height: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class GateSectionRow(Base):
+    __tablename__ = "gate_sections"
+
+    id: Mapped[str] = mapped_column(String(120), primary_key=True)
+    camera_id: Mapped[str] = mapped_column(String(120), index=True)
+    polygon_json: Mapped[str] = mapped_column(Text, nullable=False)
+    entry_line_json: Mapped[str] = mapped_column(Text, nullable=False)
+    exit_line_json: Mapped[str] = mapped_column(Text, nullable=False)
+    meta_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
 class ReviewQueueRow(Base):
@@ -301,6 +331,11 @@ def event_to_row(event: Event) -> EventRow:
         camera_id=event.camera_id,
         timestamp=event.timestamp,
         severity=event.severity,
+        source_event_id=event.source_event_id,
+        confidence=event.confidence,
+        track_id=event.track_id,
+        reliability=event.reliability,
+        clip_url=event.clip_url,
         payload_json=event.model_dump_json(),
         stored_at=event.stored_at,
     )
@@ -316,6 +351,8 @@ def fare_tap_to_row(tap: FareTap) -> FareTapRow:
         gate_section_id=tap.gate_section_id,
         timestamp=tap.timestamp,
         result=tap.result,
+        card_id_hash=tap.card_id_hash,
+        card_category=tap.card_category,
         payload_json=tap.model_dump_json(),
         stored_at=tap.stored_at or now_utc(),
     )

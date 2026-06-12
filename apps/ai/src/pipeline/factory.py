@@ -21,6 +21,7 @@ from .visualizer import Visualizer
 
 EVENTS_PATH = "/api/v1/events"
 DEFAULT_BACKEND_BASE_URL = "http://localhost:8000"
+AI_SERVICE_TOKEN_ENV = "AI_SERVICE_TOKEN"
 
 
 def resolve_http_endpoint(pipeline_endpoint: str | None) -> str:
@@ -31,6 +32,15 @@ def resolve_http_endpoint(pipeline_endpoint: str | None) -> str:
     """
     base = os.getenv("BACKEND_URL") or pipeline_endpoint or DEFAULT_BACKEND_BASE_URL
     return f"{base.rstrip('/')}{EVENTS_PATH}"
+
+
+def resolve_http_token(pipeline_token: str | None) -> str | None:
+    """백엔드 AI 서비스 인증 토큰 결정.
+
+    우선순위: AI_SERVICE_TOKEN env > pipeline.json http_token.
+    값은 Bearer prefix 없는 raw token으로 받음.
+    """
+    return os.getenv(AI_SERVICE_TOKEN_ENV) or pipeline_token
 
 
 def build_from_config(
@@ -93,7 +103,7 @@ def build_from_config(
         publisher = HttpPublisher(
             endpoint=resolve_http_endpoint(pub_cfg.get("http_endpoint")),
             timeout=pub_cfg.get("http_timeout", 2.0),
-            token=pub_cfg.get("http_token"),
+            token=resolve_http_token(pub_cfg.get("http_token")),
             fallback_path=pub_cfg.get("file_path", "runs/events_failed.jsonl"),
         )
     else:

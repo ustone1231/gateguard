@@ -12,6 +12,7 @@ from src.pipeline.factory import (
     DEFAULT_BACKEND_BASE_URL,
     EVENTS_PATH,
     resolve_http_endpoint,
+    resolve_http_token,
 )
 
 
@@ -38,3 +39,18 @@ def test_trailing_slash_in_base_url_stripped(monkeypatch):
 def test_empty_env_falls_through_to_config(monkeypatch):
     monkeypatch.setenv("BACKEND_URL", "")
     assert resolve_http_endpoint("http://configured:8080") == "http://configured:8080/api/v1/events"
+
+
+def test_ai_service_token_env_takes_priority(monkeypatch):
+    monkeypatch.setenv("AI_SERVICE_TOKEN", "env-token")
+    assert resolve_http_token("config-token") == "env-token"
+
+
+def test_http_token_config_used_when_env_missing(monkeypatch):
+    monkeypatch.delenv("AI_SERVICE_TOKEN", raising=False)
+    assert resolve_http_token("config-token") == "config-token"
+
+
+def test_empty_ai_service_token_falls_through_to_config(monkeypatch):
+    monkeypatch.setenv("AI_SERVICE_TOKEN", "")
+    assert resolve_http_token("config-token") == "config-token"

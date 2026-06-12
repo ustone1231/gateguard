@@ -67,7 +67,7 @@ gateguard-ai/
     "type": "http",                          // file → http
     "http_endpoint": "http://backend:8000",  // base URL only
     "http_timeout": 2.0,
-    "http_token": "Bearer 토큰"
+    "http_token": "raw bearer token"
   }
 }
 ```
@@ -84,6 +84,15 @@ gateguard-ai/
 
 세 경우 모두 **base URL** 만 받고, path `/api/v1/events` 는 코드에서 결합 (`src/pipeline/factory.py` `resolve_http_endpoint`).
 컨테이너 배포 시 인프라가 env 만 주입하면 config 수정 없이 동작.
+
+#### 인증 토큰 우선순위 (Issue #7)
+
+`HttpPublisher` 가 백엔드에 보내는 Bearer 토큰 결정 규칙:
+
+1. `AI_SERVICE_TOKEN` env (예: docker-compose 의 `AI_SERVICE_TOKEN=...`)
+2. `pipeline.json` 의 `publisher.http_token`
+
+값은 `Bearer ` prefix 없는 raw token으로 넣는다. `HttpPublisher`가 요청 헤더에 `Authorization: Bearer <token>` 형식으로 붙인다.
 
 ### 2. POST 페이로드 (백엔드가 받는 형식)
 

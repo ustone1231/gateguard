@@ -20,7 +20,7 @@
 gateguard/
 ├── apps/
 │   ├── ai/           # AI/CV 파이프라인 (Python, YOLO11 + ByteTrack + 룰)
-│   ├── backend/      # API 서버 (스택 미정)
+│   ├── backend/      # FastAPI 백엔드 API + AFC 매칭 + WebSocket 알림
 │   ├── frontend/     # 운영자 대시보드 (스택 미정)
 │   └── infra/        # docker-compose / 배포 스크립트
 ├── packages/

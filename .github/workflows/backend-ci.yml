@@ -22,11 +22,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # TODO: 백엔드 스택 결정 후 채울 것
-      # - Python (Django/FastAPI):   setup-python + pip install + pytest
-      # - Node (Nest/Express):        setup-node + npm ci + npm test
-      # - Java (Spring):              setup-java + ./gradlew test
-      - name: Placeholder
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: apps/backend/requirements.txt
+
+      - name: Install deps
         run: |
-          echo "Backend CI not configured yet. Add steps once stack is chosen."
-          test -f README.md
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Test
+        run: pytest -q

@@ -1,0 +1,1 @@
+"""GateGuard backend application package."""

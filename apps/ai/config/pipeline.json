@@ -11,6 +11,11 @@
     "config": "bytetrack.yaml"
   },
   "rules": {
+    "gate_passage": {
+      "enabled": true,
+      "recent_window_frames": 3,
+      "cooldown_seconds": 0.0
+    },
     "jump": {
       "enabled": true,
       "top_speed_threshold": 15.0,

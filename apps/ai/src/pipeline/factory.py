@@ -13,7 +13,7 @@ from ..detector import YoloDetector
 from ..tracker import ByteTrackTracker
 from ..publisher import FilePublisher, HttpPublisher
 from ..rules import (
-    RuleEngine, JumpRule, CrawlingRule, TailgatingRule, UnpaidRule,
+    RuleEngine, JumpRule, GatePassageRule, CrawlingRule, TailgatingRule, UnpaidRule,
 )
 from ..zone import SectionMatcher, load_sections
 from .pipeline import Pipeline
@@ -71,6 +71,12 @@ def build_from_config(
     rules_cfg = cfg["rules"]
     rules = []
     cooldown_by_type: dict[str, float] = {}
+    if rules_cfg.get("gate_passage", {}).get("enabled", True):
+        rc = rules_cfg.get("gate_passage", {})
+        rules.append(GatePassageRule(
+            recent_window_frames=rc.get("recent_window_frames", 3),
+        ))
+        cooldown_by_type["gate_passage"] = rc.get("cooldown_seconds", 0.0)
     if rules_cfg.get("jump", {}).get("enabled", True):
         rc = rules_cfg["jump"]
         rules.append(JumpRule(

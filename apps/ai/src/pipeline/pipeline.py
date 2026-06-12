@@ -115,12 +115,18 @@ class Pipeline:
                     prev = self._prev_foot.get(tr.track_id)
                     crossed_entry = None
                     crossed_exit = None
+                    entry_direction = None
+                    exit_direction = None
                     if prev is not None:
                         for s_id, section in self.sections.items():
-                            if line_crossing_direction(prev, foot, section.entry_line) != 0:
+                            entry_dir = line_crossing_direction(prev, foot, section.entry_line)
+                            exit_dir = line_crossing_direction(prev, foot, section.exit_line)
+                            if entry_dir != 0:
                                 crossed_entry = s_id
-                            if line_crossing_direction(prev, foot, section.exit_line) != 0:
+                                entry_direction = entry_dir
+                            if exit_dir != 0:
                                 crossed_exit = s_id
+                                exit_direction = exit_dir
                     self._prev_foot[tr.track_id] = foot
 
                     hist = self._histories.setdefault(
@@ -130,9 +136,12 @@ class Pipeline:
                         frame_idx=frame_idx,
                         timestamp_sec=now_sec,
                         bbox=tr.bbox,
+                        confidence=tr.confidence,
                         section_id=sid,
                         crossed_entry=crossed_entry,
                         crossed_exit=crossed_exit,
+                        crossed_entry_direction=entry_direction if crossed_entry else None,
+                        crossed_exit_direction=exit_direction if crossed_exit else None,
                     ))
 
                 # 3. 룰 평가

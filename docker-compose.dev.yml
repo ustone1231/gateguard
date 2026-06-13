@@ -6,8 +6,6 @@
 # 사용:
 #   docker compose -f docker-compose.dev.yml up
 #
-version: "3.9"
-
 services:
   # ─── AI 워커 ────────────────────────────────────────
   ai:
@@ -52,7 +50,8 @@ services:
       - JWT_SECRET=dev-jwt-secret-please-change-before-prod
       - STORAGE_BACKEND=sql
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
   # ─── 프론트 ────────────────────────────────────────
   frontend:
@@ -80,6 +79,12 @@ services:
       - "5432:5432"
     volumes:
       - gateguard_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gateguard -d gateguard"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
 
   # ─── Redis (Celery 큐, WebSocket) ─────────────────
   redis:

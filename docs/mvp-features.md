@@ -54,8 +54,8 @@
 
 ### 1-6. 스키마 버전업
 
-- `events.schema.json` v1 → **v2** (misuse type + signals/reliability/severity/afc_match 필드 추가)
-- `fare_tap.schema.json` v1 → **v1.1** (card_type enum 추가)
+- `events.schema.json` → **v0.2.2** (gate_passage/confirmed_* 분리 + signals/reliability/severity/afc_match 필드 확정)
+- `fare_tap.schema.json` → **v0.2.2** (`card_category`, `holder_gender`, `fare_tap_id` 확정)
 
 ---
 
@@ -71,7 +71,7 @@
 │ - zone (matcher)            │         │ - 의심 큐 API            │
 │ - pose_estimator (신규)      │         │ - 영상 클립 관리         │
 │ - age_estimator (신규)       │         │ - 통계 집계 API          │
-│ - senior_classifier (신규)   │         └─────────────────────────┘
+│ - eligibility_signals (신규) │         └─────────────────────────┘
 │ - rules (jump/crawl/tail/    │                    ↓
 │          unpaid/misuse)     │         ┌─────────────────────────┐
 │ - publisher (HTTP/file)     │ ───────→│ 프론트엔드 트랙           │
@@ -108,7 +108,7 @@ AI 트랙은 **영상만으로 판단 가능한 행동 신호** 만 발행. AFC 
 
 **⚠️ 중요:** AI 의 `unpaid` 는 "결제 안 함" 이 아니라 **"우회/역방향"** 의미. AFC 결제 데이터 매칭 없이 영상만으로 판단. "결제 안 함" 은 백엔드의 `confirmed_unpaid` 가 담당.
 
-**`gate_passage` 발화 시점:** entry_line 또는 exit_line crossing 시. 모든 통과를 발행해야 백엔드 매칭 엔진이 AFC 와 cross-check 가능. signals 필드에 senior_classifier 결과 첨부.
+**`gate_passage` 발화 시점:** entry_line 또는 exit_line crossing 시. 모든 통과를 발행해야 백엔드 매칭 엔진이 AFC 와 cross-check 가능. signals 필드에 eligibility_signals 결과 첨부.
 
 ### 3-2. 백엔드 발행 이벤트 (AFC 매칭 결과)
 
@@ -117,37 +117,60 @@ AI 트랙은 **영상만으로 판단 가능한 행동 신호** 만 발행. AFC 
 | # | event_type | 의미 | 판정 조건 |
 |---|-----------|------|----------|
 | 6 | **`confirmed_unpaid`** | 결제 없는 통과 = 무임승차 확정 | gate_passage 발화 + 매칭되는 fare_tap 없음 |
-| 7 | **`confirmed_misuse`** ⭐ | 우대카드 부정사용 확정 | gate_passage 발화 + 매칭된 fare_tap 의 card_category ∈ {senior, child} + signals.senior_probability < 0.20 |
+| 7 | **`confirmed_misuse`** ⭐ | 우대카드 부정사용 확정 | gate_passage 발화 + 매칭된 fare_tap 의 카드 자격(`card_category`, `holder_gender`)과 AI 보조 신호(`signals`) 불일치 |
 
 각 백엔드 발행 이벤트는 `source_event_id` 로 원본 AI event (보통 gate_passage) 참조. 영상 클립 / track_id / camera_id 등 메타 정보는 source event 의 것을 그대로 사용.
 
-### 3-3. confirmed_misuse 판정 상세 (우대카드 부정사용)
+### 3-3. confirmed_misuse 판정 상세 (우대 자격 불일치)
+
+**AFC 가 제공해야 하는 카드 자격 필드:**
+- `card_category`: `regular` / `senior` / `child` / `disabled` / `national_merit`
+- `holder_gender`: `male` / `female` / `unknown` — 카드 태그 시점에 제공되는 카드 등록 성별
+
+**AI 가 제공해야 하는 보조 신호 (`event.signals`):**
+- `senior_probability`: 영상상 노인 가능성
+- `child_probability`: 영상상 어린이 가능성
+- `estimated_age_group`: `child` / `youth` / `adult` / `senior` / `unknown`
+- `age_group_confidence`: 연령대 추정 신뢰도
+- `perceived_gender`: `male` / `female` / `unknown`
+- `gender_confidence`: 영상상 성별 추정 신뢰도
 
 **대상 카드 종류:**
 - ✅ 노인 (만 65세 이상) — `card_category: "senior"`
 - ✅ 어린이 (만 13세 미만) — `card_category: "child"`
+- ✅ 성별 제한/등록 성별이 있는 우대카드 — `holder_gender` 와 AI `perceived_gender` 비교
 - ❌ 청소년 / 장애인 / 국가유공자 — 외관 판단 불가 또는 윤리적 제외
 
-**senior_probability 계산 (AI 의 senior_classifier 모듈, gate_passage event 의 signals 에 첨부):**
+**연령/성별 보조 신호 계산 (AI 의 eligibility signal 모듈, gate_passage event 의 signals 에 첨부):**
 ```
 senior_probability =
     얼굴 나이 추정 점수      × 0.40   (MiVOLO)
   + 자세 분석 점수          × 0.25   (YOLOv8-Pose)
   + 보행 분석 점수          × 0.20   (track 시간 분석)
   + 보조기구 검출 점수       × 0.15   (지팡이/워커/휠체어)
+
+perceived_gender / gender_confidence =
+    얼굴/상반신 기반 모델 결과. 단독 확정 금지. confidence 낮으면 review_needed 성격으로만 사용.
 ```
 
 **백엔드 판정 조건 (rules/misuse.py 가 아니라 백엔드 매칭 엔진의 로직):**
 ```
 1. gate_passage event 수신 (signals 첨부됨)
 2. ±1초 윈도 내 같은 gate_section_id 의 fare_tap 매칭
-3. 매칭된 fare_tap.card_category ∈ {senior, child}
-4. AND gate_passage.signals.senior_probability < 0.20
-5. AND gate_passage.signals 의 측정 신뢰도 high
+3. 연령 자격 불일치:
+   - fare_tap.card_category == "senior" AND signals.senior_probability < 0.20
+   - 또는 fare_tap.card_category == "child" AND signals.child_probability < 0.20
+4. 성별 자격 불일치:
+   - fare_tap.holder_gender ∈ {"male", "female"}
+   - AND signals.perceived_gender ∈ {"male", "female"}
+   - AND fare_tap.holder_gender != signals.perceived_gender
+   - AND signals.gender_confidence >= 0.80
+5. 위 3 또는 4가 true
+6. AND gate_passage.reliability == "high"
 → confirmed_misuse event 발행 (source_event_id = gate_passage.event_id)
 ```
 
-**회색지대 (0.20 ~ 0.50) 는 건드리지 않음** — false positive 폭증 방지.
+**회색지대 정책:** `senior_probability` / `child_probability` 가 0.20~0.50 이거나 `gender_confidence < 0.80` 이면 자동 `confirmed_misuse` 금지. 이 경우 review queue 의 낮은 우선순위 후보로만 보낼 수 있다.
 
 ### 3-4. 시나리오 판정 매트릭스 (detection-strategy.md §7 와 일치)
 
@@ -157,7 +180,7 @@ senior_probability =
 | ❌ 없음 | ❌ 없음 | ✅ | 🔴 `confirmed_unpaid` |
 | ✅ 있음 (jump 등) | ✅ approved | ✅ | 🟡 회색지대 알림 (영상 검토) |
 | ✅ 있음 | ❌ 없음 | ✅ | 🔴🔴 명백한 무임 (critical) |
-| ❌ 없음 | ✅ senior 카드 + senior_probability 낮음 | ✅ | 🔴 `confirmed_misuse` |
+| ❌ 없음 | ✅ 우대카드 자격 불일치 | ✅ | 🔴 `confirmed_misuse` |
 
 ---
 
@@ -173,8 +196,8 @@ senior_probability =
 |------|------|------|
 | `src/pose_estimator/` | YOLOv8-Pose 래핑, 키포인트 추출 | 정우 |
 | `src/age_estimator/` | MiVOLO 래핑, 얼굴 나이 추정 | 정우 |
-| `src/senior_classifier/` | 다중 신호 결합 (얼굴+자세+보행+보조기구) → senior_probability 출력. **gate_passage event 의 `signals` 필드에 첨부** | 정우 또는 민지 |
-| `src/rules/gate_passage.py` | 모든 게이트 통과를 이벤트로 발행 (line crossing 시점). senior_classifier 결과 첨부 | 민지 |
+| `src/eligibility_signals/` | 다중 신호 결합 (얼굴+자세+보행+보조기구+성별 보조 신호) → senior_probability / child_probability / perceived_gender 출력. **gate_passage event 의 `signals` 필드에 첨부** | 정우 또는 민지 |
+| `src/rules/gate_passage.py` | 모든 게이트 통과를 이벤트로 발행 (line crossing 시점). eligibility_signals 결과 첨부 | 민지 |
 
 **⚠️ `rules/misuse.py` 는 만들지 않음.** AI 는 fare_tap 의 `card_category` 를 받지 못하므로 misuse 판정 불가. 백엔드 매칭 엔진이 confirmed_misuse 발행.
 
@@ -182,14 +205,14 @@ senior_probability =
 
 | 모듈 | 변경 사항 | 담당 |
 |------|----------|------|
-| `src/types.py` | `Event` 에 `event_id`, `source_event_id`, `signals`, `reliability`, `severity`, `afc_match` 필드 추가 + event_type enum 확장 (gate_passage 등). ✅ v0.2.1 적용 완료 | 4명 합의 |
+| `src/types.py` | `Event` 에 `event_id`, `source_event_id`, `signals`, `reliability`, `severity`, `afc_match` 필드 추가 + event_type enum 확장 (gate_passage 등). ✅ v0.2.2 반영 필요 | 4명 합의 |
 | `src/zone/matcher.py` | hysteresis 도입 (P0 - 진동 해결) | 유석 |
 | `src/zone/section.py` | (변경 없음 — entry_line / exit_line 이미 정의됨) | 유석 |
 | `src/rules/unpaid.py` | (변경 없음 — 의미는 "우회/역방향" 그대로) | 민지 |
 | `src/rules/*.py` (jump 등) | reliability / severity 필드 채우기 | 민지 |
 | `src/publisher/*.py` | severity 필드 처리 (대시보드 알림 강도) | 민지 |
-| `src/pipeline/factory.py` | 신규 모듈 (pose/age/senior_classifier/gate_passage rule) 등록 + config 로딩 | 정우 |
-| `config/pipeline.json` | pose/age/senior_classifier/gate_passage 임계치 추가 | 4명 합의 |
+| `src/pipeline/factory.py` | 신규 모듈 (pose/age/eligibility_signals/gate_passage rule) 등록 + config 로딩 | 정우 |
+| `config/pipeline.json` | pose/age/eligibility_signals/gate_passage 임계치 추가 | 4명 합의 |
 
 ### 4-A-3. 신규 의존성 (requirements.txt)
 
@@ -254,7 +277,7 @@ MiVOLO 의 모델 아키텍처는 timm 기반이라 자작 inference 가능.
 |------|-----------------|------|
 | `zone/` | `tests/test_geometry.py`, `test_matcher.py`, `test_section.py` (✅ 완료) | 유석 |
 | `detector/`, `tracker/` | `tests/test_detector.py`, `test_tracker.py` (신규) | 정우 |
-| `rules/` (jump, crawling, tailgating, unpaid, gate_passage), `senior_classifier/` | `tests/test_rules_*.py`, `test_senior_classifier.py` (신규) | 민지 |
+| `rules/` (jump, crawling, tailgating, unpaid, gate_passage), `eligibility_signals/` | `tests/test_rules_*.py`, `test_eligibility_signals.py` (신규) | 민지 |
 | `pose_estimator/`, `age_estimator/` | `tests/test_pose.py`, `test_age.py` (신규) | 정우 |
 
 ### 4-A-7. 팀 역할별 P0 작업 (AI/CV)
@@ -281,10 +304,10 @@ MiVOLO 의 모델 아키텍처는 timm 기반이라 자작 inference 가능.
 - (P1) 정규화 좌표 변환
 - 비고: AFC 매칭은 백엔드 책임 — AI/zone 영역 아님
 
-**민지 (#7 Rule) — `rules/`, `publisher/`, `senior_classifier/`**
+**민지 (#7 Rule) — `rules/`, `publisher/`, `eligibility_signals/`**
 - 동일 트랙 다중 발화 cooldown 강화
 - **`rules/gate_passage.py` 신규 작성** (line crossing 시점에 모든 통과 이벤트 발행 + signals 첨부)
-- **`senior_classifier/` 다중 신호 결합 로직** (얼굴/자세/보행/보조기구 → senior_probability)
+- **`eligibility_signals/` 다중 신호 결합 로직** (얼굴/자세/보행/보조기구/성별 보조 신호 → senior_probability, child_probability, perceived_gender)
 - 기존 룰 (jump 등) 에 reliability / severity 필드 채우기
 - (P1) crawling 실증 회귀 테스트
 - (P1) HttpPublisher env 지원
@@ -300,7 +323,7 @@ MiVOLO 의 모델 아키텍처는 timm 기반이라 자작 inference 가능.
 |------|------|
 | **이벤트 수신 endpoint** | `POST /api/v1/events` — AI 트랙이 발행하는 모든 event (gate_passage/jump/crawling/tailgating/unpaid) 수신, DB 저장. 백엔드 자체 발행 (confirmed_*) 도 같은 endpoint 에 self-POST 또는 직접 DB 저장 |
 | **AFC 수신 endpoint** | `POST /api/v1/fare-taps` — Mock AFC 송신기 결제 이벤트 수신 |
-| **매칭 엔진** ⭐ | 비동기 워커. gate_passage event 와 fare_tap 을 ±1초 윈도로 매칭. 매칭 실패 → `confirmed_unpaid` 발행. 매칭 + senior 카드 + senior_probability 낮음 → `confirmed_misuse` 발행 |
+| **매칭 엔진** ⭐ | 비동기 워커. gate_passage event 와 fare_tap 을 ±1초 윈도로 매칭. 매칭 실패 → `confirmed_unpaid` 발행. 매칭 + 우대 자격 불일치 → `confirmed_misuse` 발행 |
 | **AFC Mock 송신기** | JSONL replay 도구 + 수동 UI 트리거 (백엔드 트랙이 만드는 게 자연스러움) |
 | **의심 큐 API** | `GET /api/v1/review-queue` — 역무원이 확인할 의심 케이스 목록 (confirmed_misuse + 회색지대 자동 추가) |
 | **의심 큐 피드백 API** | `POST /api/v1/review-queue/{id}/feedback` — 정탐/오탐 라벨링 수집 |
@@ -311,7 +334,7 @@ MiVOLO 의 모델 아키텍처는 timm 기반이라 자작 inference 가능.
 ### 4-B-2. 매칭 엔진 의사코드 (핵심 로직)
 
 ```python
-# detection-strategy.md §6 의 의사코드를 v0.2.1 schema 에 맞게 확장
+# detection-strategy.md §6 의 의사코드를 v0.2.2 schema 에 맞게 확장
 def on_gate_passage(passage_event):
     matched_taps = FareTap.find(
         gate=passage_event.gate_section_id,
@@ -342,18 +365,13 @@ def on_gate_passage(passage_event):
         fare_tap_id=tap.fare_tap_id,
         card_id_hash=tap.card_id_hash,
         card_category=tap.card_category,
+        holder_gender=tap.holder_gender,
         tap_timestamp=tap.timestamp,
         time_delta_ms=int((tap.timestamp - passage_event.timestamp).total_seconds() * 1000),
     )
 
-    # misuse 판정 (우대카드 부정사용)
-    if (
-        tap.card_category in {"senior", "child"}
-        and passage_event.signals
-        and passage_event.signals.senior_probability is not None
-        and passage_event.signals.senior_probability < 0.20
-        and passage_event.reliability == "high"
-    ):
+    # misuse 판정 (우대 자격 불일치)
+    if eligibility_mismatch(tap, passage_event.signals) and passage_event.reliability == "high":
         emit(Event(
             event_type="confirmed_misuse",
             source_event_id=passage_event.event_id,
@@ -395,8 +413,8 @@ review_queue            -- 의심 큐 (confirmed_misuse + 회색지대 자동 �
 
 ### 4-B-4. 스키마 합의 필요 (4트랙 공통)
 
-- `packages/schema/events/event.schema.json` v0.2.1
-- `packages/schema/fare-taps/fare_tap.schema.json` v0.2.1
+- `packages/schema/events/event.schema.json` v0.2.2
+- `packages/schema/fare-taps/fare_tap.schema.json` v0.2.2
 - 백엔드는 이 스키마를 받는 쪽 + DB 저장 쪽 + confirmed_* 발행 쪽
 
 ### 4-B-5. 안전장치
@@ -431,7 +449,7 @@ review_queue            -- 의심 큐 (confirmed_misuse + 회색지대 자동 �
 ### 4-C-3. 스키마 의존성
 
 - 이벤트 페이로드 (`events.schema.json` v2) — 5종 + signals + reliability + severity 표시
-- AFC 페이로드 (`fare_tap.schema.json` v1.1) — card_type 별 다른 처리
+- AFC 페이로드 (`fare_tap.schema.json` v0.2.2) — card_category / holder_gender 별 다른 처리
 
 ---
 
@@ -479,7 +497,7 @@ review_queue            -- 의심 큐 (confirmed_misuse + 회색지대 자동 �
 
 ### 4-D-7. CI/CD
 
-- 기존 `schema-ci.yml` 에 `event.schema.json` v2 + `fare_tap.schema.json` v1.1 검증 추가
+- 기존 `schema-ci.yml` 에 `event.schema.json` v0.2.2 + `fare_tap.schema.json` v0.2.2 검증 추가
 - 모델 파일 다운로드 단계 추가
 - (P1) GPU inference smoke test
 
@@ -496,16 +514,17 @@ review_queue            -- 의심 큐 (confirmed_misuse + 회색지대 자동 �
 | `event_id` | 🆕 **신규 required** | AI 가 발급 (`evt_<uuid4 hex>`), 백엔드 멱등성 키 (중복 저장 방지) |
 | `event_type` enum | ➕ `misuse` 추가 | 기존 jump/crawling/tailgating/unpaid 그대로. **별도 `type` 필드 신설 안 함** (기존 코드 깨짐 방지) |
 | `gate_section_id`, `camera_id`, `track_id`, `confidence`, `timestamp`, `clip_url`, `raw_meta` | 변경 없음 | 기존 v0.1 그대로 — 코드 영향 0 |
-| `signals` | 🆕 신규 optional | face_age_estimate, pose/gait_senior_score, assistive_device_detected, senior_probability |
+| `signals` | 🆕 신규 optional | face_age_estimate, pose/gait_senior_score, assistive_device_detected, senior_probability, child_probability, estimated_age_group, perceived_gender, gender_confidence |
 | `reliability` | 🆕 신규 optional | enum: low / mid / high |
 | `severity` | 🆕 신규 optional | enum: info / warning / critical (프론트엔드 알림 강도) |
-| `afc_match` | 🆕 신규 optional | 백엔드 매칭 엔진이 채움. AI 는 null 로 발행. fare_tap_id + card_id_hash + card_category + tap_timestamp + time_delta_ms |
+| `afc_match` | 🆕 신규 optional | 백엔드 매칭 엔진이 채움. AI 는 null 로 발행. fare_tap_id + card_id_hash + card_category + holder_gender + tap_timestamp + time_delta_ms |
 
 ### 5-2. `fare-taps/fare_tap.schema.json` v0.1.0 → **v0.2.0** 변경 요약
 
 | 필드 | 변경 | 비고 |
 |------|------|------|
 | `card_category` | 🆕 **신규 required** top-level | enum: regular / senior / child / disabled / national_merit. **카드 자격 종류** (할인/면제 기준). misuse 룰의 매칭 기준 |
+| `holder_gender` | 🆕 **신규 required** top-level | enum: male / female / unknown. 카드 태그 시점에 AFC 가 제공하는 카드 등록 성별. AI 의 `signals.perceived_gender` 와 비교 |
 | `raw_meta.card_type` | 변경 없음 | **결제 수단** (T-money / 캐시비 등). `card_category` 와 의미 다름 — 혼동 금지 |
 | `event_type`, `gate_section_id`, `card_id_hash`, `timestamp`, `result` | 변경 없음 | 기존 v0.1 그대로 |
 | `card_id_hash` 패턴 | 변경 없음 | `^sha256:[a-f0-9]{64}$` (접두사 `sha256:` 포함) |
@@ -513,7 +532,7 @@ review_queue            -- 의심 큐 (confirmed_misuse + 회색지대 자동 �
 ### 5-3. v0.2.0 핵심 결정 사항 (충돌 회피)
 
 1. **`event_type` 구조 유지** — 별도 `type` 필드 만들지 않음. enum 에 `misuse` 만 추가 → 기존 코드/예제/룰 깨지지 않음
-2. **`card_type` 이름 충돌 회피** — 신규 자격 필드는 `card_category`. 기존 `raw_meta.card_type` (결제수단) 과 분리
+2. **`card_type` 이름 충돌 회피** — 신규 자격 필드는 `card_category`, 카드 등록 성별은 `holder_gender`. 기존 `raw_meta.card_type` (결제수단) 과 분리
 3. **`event_id` AI 발급** — UUID v4 hex, 백엔드 멱등성 키
 4. **`afc_match` 는 백엔드가 채움** — AI 발행 시 None. 백엔드 매칭 엔진이 ±1초 윈도로 fare_tap 찾아서 업데이트
 5. **`clip_url` 이름 유지** — `video_clip_url` 같은 이름 변경 안 함 (기존 코드/예제 호환)
@@ -549,7 +568,7 @@ review_queue            -- 의심 큐 (confirmed_misuse + 회색지대 자동 �
 | **B. Mock HTTP 송신기** | 백엔드 endpoint 통합 검증 | 백엔드 |
 | **C. 수동 UI (버튼 클릭)** | 발표/시연 인터랙티브 | 프론트엔드 |
 
-세 가지 모두 동일 `fare_tap.schema.json` v1.1 페이로드 사용 — 우리 매칭 엔진 입장에서 source 무관.
+세 가지 모두 동일 `fare_tap.schema.json` v0.2.2 페이로드 사용 — 우리 매칭 엔진 입장에서 source 무관.
 
 ### 6-3. 미래 (Phase 2, MVP 범위 외)
 
@@ -660,8 +679,8 @@ review_queue            -- 의심 큐 (confirmed_misuse + 회색지대 자동 �
 
 | # | 결정 사항 | 결정 | 명시 위치 |
 |---|---------|------|----------|
-| 1 | events.schema.json 필드 | ✅ v0.2.1 확정 | [`packages/schema/events/event.schema.json`](../packages/schema/events/event.schema.json) |
-| 2 | fare_tap.schema.json 필드 | ✅ v0.2.1 확정 (`card_category` 별도 필드, `fare_tap_id` 멱등성 키) | [`packages/schema/fare-taps/fare_tap.schema.json`](../packages/schema/fare-taps/fare_tap.schema.json) |
+| 1 | events.schema.json 필드 | ✅ v0.2.2 확정 | [`packages/schema/events/event.schema.json`](../packages/schema/events/event.schema.json) |
+| 2 | fare_tap.schema.json 필드 | ✅ v0.2.2 확정 (`card_category`, `holder_gender` 별도 필드, `fare_tap_id` 멱등성 키) | [`packages/schema/fare-taps/fare_tap.schema.json`](../packages/schema/fare-taps/fare_tap.schema.json) |
 | 3 | Mock AFC 송신 채널 | HTTP POST `/api/v1/fare-taps`. fallback: 로컬 JSONL | [`api-contract.md`](api-contract.md) §11-8 |
 | 4 | 영상 클립 저장 | 로컬 디스크 `/var/lib/gateguard/clips/` + 24h cron 삭제 + 서명 URL | [`api-contract.md`](api-contract.md) §13 |
 | 5 | 카드 ID 해싱 시점 | Mock AFC 송신기가 송신 전 해시. 백엔드는 검증만 (원본 절대 수신 X) | [`api-contract.md`](api-contract.md) §8-3, §11-7 |
@@ -709,7 +728,7 @@ CCTV → 사람 탐지/추적 → zone 매칭                  ┐
                             ↓                       │
                        pose/age 추정                │── 결합
                             ↓                       │
-                  senior_classifier (다중 신호)      │
+                  eligibility_signals (다중 신호)    │
                             ↓                       │
 Mock AFC → fare_tap (card_type) ─────── 매칭 ───────┘
                             ↓
@@ -723,7 +742,7 @@ Mock AFC → fare_tap (card_type) ─────── 매칭 ─────�
 **핵심 추가:**
 - 5번째 룰 (misuse)
 - AFC 매칭
-- pose/age/senior_classifier 모듈
+- pose/age/eligibility_signals 모듈
 - 의심 큐 워크플로우
 - 한국인 Fine-tuning
 - Mock AFC (3가지 형태)

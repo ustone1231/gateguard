@@ -103,6 +103,8 @@ CCTV 영상에서 다음 4종 부정 행위 + 정상 게이트 통과를 이벤�
   "event_type": "fare_tap",
   "gate_section_id": "gate_03",
   "card_id_hash": "sha256:ab123...",
+  "card_category": "senior",
+  "holder_gender": "female",
   "timestamp": "2026-05-24T14:23:15.847+09:00",
   "result": "approved",
   "raw_meta": {
@@ -113,6 +115,8 @@ CCTV 영상에서 다음 4종 부정 행위 + 정상 게이트 통과를 이벤�
 ```
 
 **개인정보 보호:** card_id 는 원본 저장 금지. 해시(sha256 + salt) 만 저장.
+
+**우대 자격 필드:** `card_category` 는 카드의 할인/면제 자격, `holder_gender` 는 AFC 가 제공하는 카드 등록 성별이다. 결제 수단은 `raw_meta.card_type` 에 둔다.
 
 ---
 
@@ -136,7 +140,8 @@ def on_gate_passage(passage_event):
     if matched_taps:
         # 가장 가까운 시간의 tap 을 매칭
         FareMatch.create(passage=passage_event, tap=matched_taps[0])
-        # 정상 통과로 분류 (별도 알림 X)
+        # 카드 자격과 AI 보조 신호가 불일치하면 confirmed_misuse,
+        # 아니면 정상 통과로 분류 (별도 알림 X)
     else:
         # 결제 없는 통과 = 무임승차 확정
         Alert.emit(
@@ -151,6 +156,8 @@ def on_gate_passage(passage_event):
 - 카드 탭 → 게이트 열림 → 사람 통과 까지 보통 0.3~0.8 초
 - 시스템 시간 동기화 오차 ±0.2 초 가정
 - 너무 좁으면 매칭 누락 (false unpaid), 너무 넓으면 다른 사람과 잘못 매칭
+
+**우대카드 부정사용 판단:** AI 는 나이/성별을 확정하지 않고 `signals.senior_probability`, `signals.child_probability`, `signals.perceived_gender`, `signals.gender_confidence` 만 제공한다. 백엔드는 매칭된 `fare_tap.card_category` / `fare_tap.holder_gender` 와 비교해 high confidence 불일치일 때만 `confirmed_misuse` 를 발행한다. confidence 낮은 경우는 자동 확정 금지.
 
 ---
 

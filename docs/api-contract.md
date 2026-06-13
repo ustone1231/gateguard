@@ -69,7 +69,7 @@ POST /api/v1/auth/logout
 
 - **누가 호출:** AI 트랙 (`apps/ai/src/publisher/http_publisher.py`)
 - **인증:** `Authorization: Bearer <AI_SERVICE_TOKEN>`
-- **요청 body:** `packages/schema/events/event.schema.json` v0.2.1 페이로드 (event_type ∈ {gate_passage, jump, crawling, tailgating, unpaid})
+- **요청 body:** `packages/schema/events/event.schema.json` v0.2.2 페이로드 (event_type ∈ {gate_passage, jump, crawling, tailgating, unpaid})
 - **응답 201:** `{ "event_id": "evt_...", "stored_at": "2026-05-28T...Z" }`
 - **응답 200:** `{ "event_id": "evt_...", "stored_at": "...", "deduped": true }` (event_id 가 이미 존재할 때 — **멱등성**)
 - **응답 400:** 스키마 검증 실패 → AI fallback 으로 저장 + 재전송 안 함 (스키마 변경 안 하면 재전송해도 실패)
@@ -82,7 +82,7 @@ POST /api/v1/auth/logout
 
 - **누가 호출:** Mock AFC 송신기 (JSONL replay / Mock UI / Mock HTTP 송신기)
 - **인증:** `Authorization: Bearer <AFC_SERVICE_TOKEN>`
-- **요청 body:** `packages/schema/fare-taps/fare_tap.schema.json` v0.2.1 페이로드 (`fare_tap_id` 필수 — 멱등성 키)
+- **요청 body:** `packages/schema/fare-taps/fare_tap.schema.json` v0.2.2 페이로드 (`fare_tap_id` 필수 — 멱등성 키, `holder_gender` 필수)
 - **응답 201:** `{ "fare_tap_id": "tap_...", "stored_at": "..." }`
 - **응답 200:** `{ "fare_tap_id": "tap_...", "stored_at": "...", "deduped": true }` (fare_tap_id 중복 시 — **멱등성**)
 - **응답 400:** 스키마 검증 실패 → 송신측 책임
@@ -116,14 +116,9 @@ def on_gate_passage(passage_event):
     FareMatch.create(passage=passage_event, tap=tap)
     update_afc_match(passage_event, tap)
 
-    # 4. misuse 판정
-    if (
-        tap.card_category in {"senior", "child"}
-        and passage_event.signals
-        and passage_event.signals.senior_probability is not None
-        and passage_event.signals.senior_probability < 0.20
-        and passage_event.reliability == "high"
-    ):
+    # 4. misuse 판정: 카드 자격과 AI 보조 신호의 불일치
+    mismatch = eligibility_mismatch(tap, passage_event.signals)
+    if mismatch and passage_event.reliability == "high":
         emit_confirmed_misuse(source=passage_event, tap=tap)
 ```
 
@@ -131,6 +126,9 @@ def on_gate_passage(passage_event):
 - 한 `fare_tap` 은 한 `gate_passage` 와만 매칭 (중복 매칭 금지)
 - `confirmed_unpaid` / `confirmed_misuse` 의 `source_event_id` = 원본 `gate_passage.event_id`
 - `confirmed_*` 발행도 `POST /api/v1/events` 와 같은 schema 사용 (백엔드 self-POST 또는 직접 DB 저장)
+- AI 는 성별/연령을 확정하지 않는다. `signals.perceived_gender`, `signals.estimated_age_group`, `signals.*_probability` 는 백엔드 판정용 보조 신호다.
+- `fare_tap.holder_gender` 는 AFC 가 제공한 카드 등록 성별이다. 성별 불일치 자동 확정은 `signals.gender_confidence >= 0.80` 일 때만 허용하고, 그 미만은 review queue 로만 보낸다.
+- 연령 불일치 자동 확정은 `senior_probability < 0.20` 또는 `child_probability < 0.20` 처럼 명확한 경우만 허용한다. 회색지대는 자동 확정 금지.
 
 ### 2-2. 프론트엔드 → 백엔드 — 이벤트 조회
 
@@ -434,18 +432,22 @@ AI                       백엔드              Mock AFC
 AI                                    백엔드                  Mock AFC
  │                                       │                       │
  │                                       │←POST /fare-taps───────│ (senior 카드, t=10:00:00.301)
- │                                       │  card_category=senior
+ │                                       │  card_category=senior,
+ │                                       │  holder_gender=female
  │                                       │  201 + tap_id ───────→│
  │ POST /events                          │
  │ (event_type=gate_passage,             │
- │  signals.senior_probability=0.11,     │  ← AI 의 senior_classifier 가 채움
+ │  signals.senior_probability=0.11,     │  ← AI 의 eligibility signal 모듈이 채움
+ │  signals.perceived_gender=male,
+ │  signals.gender_confidence=0.83,
  │  reliability=high,                    │
  │  t=10:00:00.300)                      │
  │ ────────────────────────────────────→│
  │←─ 201 + event_id (GP1)                │
  │                                       │ ±1초 윈도우 검색
  │                                       │ → fare_tap 발견 (Δt=-1ms)
- │                                       │ card_category=senior + senior_probability<0.20
+ │                                       │ senior 카드 + senior_probability<0.20
+ │                                       │ 또는 holder_gender 와 perceived_gender 불일치
  │                                       │ + reliability=high → misuse 조건 충족
  │                                       │ ▶ emit confirmed_misuse
  │                                       │   (source_event_id=GP1, severity=warning)

@@ -13,7 +13,7 @@
 | **"MVP 에서 정확히 무엇을 개발하나? 무엇이 기존에서 바뀌었나?"** | [`mvp-features.md`](mvp-features.md) |
 | "트랙별로 무엇을 만들어야 하나?" | [`mvp-features.md`](mvp-features.md) §4 |
 | "5번째 룰 (우대카드 부정사용) 은 어떻게 감지?" | [`mvp-features.md`](mvp-features.md) §3-1 |
-| "스키마 어떻게 바뀌나? (events v2, fare_tap v1.1)" | [`mvp-features.md`](mvp-features.md) §5 |
+| "스키마 어떻게 바뀌나? (events/fare_tap v0.2.2)" | [`mvp-features.md`](mvp-features.md) §5 |
 | "Mock AFC / Fine-tuning / 학습 전략?" | [`mvp-features.md`](mvp-features.md) §6, §9 |
 | "트랙 간 합의가 필요한 결정 목록?" | [`mvp-features.md`](mvp-features.md) §12 |
 | **"트랙 간에 무슨 데이터를 어떻게 주고받나? (REST/WS/인증/에러)"** | [`api-contract.md`](api-contract.md) |

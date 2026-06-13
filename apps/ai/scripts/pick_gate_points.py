@@ -1,4 +1,4 @@
-"""Pick gate section coordinates from the first video frame.
+"""Pick gate section coordinates from a video frame.
 
 Controls:
     left click  add point
@@ -15,6 +15,7 @@ Stages:
 
 Usage:
     python scripts/pick_gate_points.py path/to/video.mov
+    python scripts/pick_gate_points.py path/to/video.mov --time-sec 12
     python scripts/pick_gate_points.py path/to/video.mov --output config/gate_sections.local.json
 """
 from __future__ import annotations
@@ -31,7 +32,7 @@ STAGES = ("polygon", "entry_line", "exit_line")
 
 def main() -> None:
     args = parse_args()
-    frame = read_first_frame(args.video)
+    frame = read_frame(args.video, frame_idx=args.frame_idx, time_sec=args.time_sec)
     height, width = frame.shape[:2]
     display, scale = resize_for_display(frame, args.max_width, args.max_height)
 
@@ -76,17 +77,28 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output", default=None, help="Optional JSON output path")
     parser.add_argument("--max-width", type=int, default=1400)
     parser.add_argument("--max-height", type=int, default=900)
+    parser.add_argument("--time-sec", type=float, default=None, help="Pick from this timestamp in seconds")
+    parser.add_argument("--frame-idx", type=int, default=None, help="Pick from this 0-based frame index")
     return parser.parse_args()
 
 
-def read_first_frame(video_path: str):
+def read_frame(video_path: str, frame_idx: int | None, time_sec: float | None):
+    if frame_idx is not None and time_sec is not None:
+        raise ValueError("use only one of --frame-idx or --time-sec")
+
     cap = cv2.VideoCapture(video_path)
     try:
         if not cap.isOpened():
             raise RuntimeError(f"open failed: {video_path}")
+        if frame_idx is not None:
+            cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
+            print(f"reading frame index: {frame_idx}")
+        elif time_sec is not None:
+            cap.set(cv2.CAP_PROP_POS_MSEC, time_sec * 1000)
+            print(f"reading timestamp: {time_sec:.3f}s")
         ok, frame = cap.read()
         if not ok:
-            raise RuntimeError(f"first frame read failed: {video_path}")
+            raise RuntimeError(f"frame read failed: {video_path}")
         return frame
     finally:
         cap.release()

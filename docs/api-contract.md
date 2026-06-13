@@ -145,7 +145,7 @@ def on_gate_passage(passage_event):
 - **응답 200:**
   ```json
   {
-    "data": [ <Event v0.2.0>, ... ],
+    "data": [ <Event v0.2.2>, ... ],
     "next_cursor": "..." | null,
     "total": 1234
   }
@@ -154,7 +154,7 @@ def on_gate_passage(passage_event):
 #### `GET /api/v1/events/{event_id}`
 
 - **인증:** JWT
-- **응답 200:** Event v0.2.0 페이로드
+- **응답 200:** Event v0.2.2 페이로드
 - **응답 404:** 이벤트 없음
 
 #### `GET /api/v1/events/{event_id}/video-clip`
@@ -178,7 +178,7 @@ def on_gate_passage(passage_event):
       {
         "queue_id": "rq_abc123",
         "event_id": "evt_b2c3...",
-        "event": { ...Event v0.2.0... },
+        "event": { ...Event v0.2.2... },
         "status": "pending",
         "added_at": "2026-05-28T03:45:23+00:00",
         "reviewer_id": null,
@@ -231,8 +231,8 @@ def on_gate_passage(passage_event):
       "jump": 12,
       "crawling": 3,
       "tailgating": 8,
-      "unpaid": 21,
-      "misuse": 5
+      "confirmed_unpaid": 21,
+      "confirmed_misuse": 5
     },
     "by_gate": {
       "gate_01": 30,
@@ -280,8 +280,8 @@ def on_gate_passage(passage_event):
 ### 3-2. 서버 → 클라이언트 메시지 (JSON)
 
 ```jsonc
-{ "type": "event_new",          "data": <Event v0.2.0> }
-{ "type": "event_updated",      "data": <Event v0.2.0> }  // afc_match 채워졌을 때 등
+{ "type": "event_new",          "data": <Event v0.2.2> }
+{ "type": "event_updated",      "data": <Event v0.2.2> }  // afc_match 채워졌을 때 등
 { "type": "review_queue_added", "data": { "queue_id": "rq_...", "event_id": "evt_..." } }
 { "type": "heartbeat",          "data": { "ts": "..." } }  // 30초마다
 ```
@@ -481,7 +481,7 @@ AI                                    백엔드                  Mock AFC
 
 ### 7-1. JSONL 파일 replay (옵션 A)
 
-- 형식: 한 줄당 fare_tap v0.2.0 JSON
+- 형식: 한 줄당 fare_tap v0.2.2 JSON (`holder_gender` 포함)
 - 실행: `python scripts/replay_afc.py --file mocks/afc.jsonl --speed 1.0`
 - 동작: 파일의 첫 timestamp 를 현재 시각으로 보정, 이후 timestamp 간격대로 POST /fare-taps 호출
 - 인증: env `AFC_SERVICE_TOKEN`
@@ -550,7 +550,7 @@ AI                                    백엔드                  Mock AFC
 
 ### 10-1. 스키마 vs API URL
 
-- **스키마 (data)**: SemVer (`v0.2.0`). 변경 시 `packages/schema/VERSIONING.md` 업데이트
+- **스키마 (data)**: SemVer (`v0.2.2` 현재). 변경 시 `packages/schema/VERSIONING.md` 업데이트
 - **API URL (transport)**: `/api/v1/...` — major 변경 시 `/api/v2/` 로 분기 (v0.x 스키마라도 URL 은 v1 시작)
 
 ### 10-2. 호환성 정책

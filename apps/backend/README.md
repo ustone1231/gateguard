@@ -141,7 +141,7 @@ WebSocket 메시지는 `event_new`, `review_queue_added`, `heartbeat` 타입을 
 # datamodel-code-generator 로 schema → Pydantic
 datamodel-codegen \
   --input ../../packages/schema/events/event.schema.json \
-  --output app/models/event_v021.py \
+  --output app/models/event_v022.py \
   --output-model-type pydantic_v2.BaseModel
 ```
 
@@ -160,7 +160,7 @@ def on_gate_passage(passage):
         return
     tap = nearest_by_time(matched, passage.timestamp)
     update_afc_match(passage, tap)
-    if tap.card_category in {"senior", "child"} and passage.signals.senior_probability < 0.20:
+    if eligibility_mismatch(tap, passage.signals) and passage.reliability == "high":
         emit_confirmed_misuse(source=passage, tap=tap)
 ```
 
@@ -170,6 +170,7 @@ def on_gate_passage(passage):
 - `approved` fare tap 만 gate_passage 와 1:1 매칭됩니다.
 - `denied` / `error` fare tap 은 저장하지만 매칭 키로 사용하지 않습니다.
 - `denied` tap 이 ±1초 내 존재하고, 같은 window 안에 `approved` tap 이 없으면 buffer 이후 `confirmed_unpaid` 를 발행합니다.
+- `confirmed_misuse` 는 `card_category` / `holder_gender` 와 AI `signals` 의 high-confidence 불일치일 때만 발행합니다.
 - 파생 이벤트는 멱등적으로 생성되어 같은 source event 에 대해 중복 발행되지 않습니다.
 
 ---
@@ -197,5 +198,5 @@ python3 -m compileall -q app tests
 
 `.github/workflows/backend-ci.yml` 의 placeholder 를 실제 CI 로 교체:
 - pytest 실행
-- 스키마 호환성 검증 (events v0.2.1 / fare_tap v0.2.1)
+- 스키마 호환성 검증 (events v0.2.2 / fare_tap v0.2.2)
 - Docker 이미지 빌드 (Tyler 의 인프라 Dockerfile 참조)

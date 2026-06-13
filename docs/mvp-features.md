@@ -14,7 +14,7 @@
 
 ## 1. 변경 이력 (기존 설계 → 새 MVP)
 
-### 1-1. 부정승차 종류: 4종 → 5종
+### 1-1. 부정승차 판정: AI 행동 신호 + 백엔드 확정 판정
 
 | | 기존 | 변경 후 |
 |---|------|---------|
@@ -22,7 +22,7 @@
 | 2 | crawling | crawling |
 | 3 | tailgating | tailgating |
 | 4 | unpaid | unpaid |
-| 5 | — | **misuse (우대카드 부정사용)** ⭐ |
+| 5 | — | **confirmed_misuse (우대카드 부정사용, 백엔드 확정 판정)** ⭐ |
 
 **왜 추가:** 서울교통공사 추정 부정승차 손실의 가장 큰 비중이 우대카드 부정사용 (특히 노인 카드). 시스템 차별점.
 
@@ -73,7 +73,7 @@
 │ - age_estimator (신규)       │         │ - 통계 집계 API          │
 │ - eligibility_signals (신규) │         └─────────────────────────┘
 │ - rules (jump/crawl/tail/    │                    ↓
-│          unpaid/misuse)     │         ┌─────────────────────────┐
+│          unpaid/gate_passage)│         ┌─────────────────────────┐
 │ - publisher (HTTP/file)     │ ───────→│ 프론트엔드 트랙           │
 └─────────────────────────────┘ POST    │ - 실시간 알림 + 알림음    │
                                 events  │ - 의심 큐 화면 (영상+검토)│
@@ -398,7 +398,7 @@ events                  -- AI 발행 + 백엔드 발행 모든 이벤트
 
 fare_taps               -- Mock AFC 수신 데이터
   fare_tap_id (PK), timestamp, gate_section_id,
-  card_id_hash, card_category (enum), result (enum),
+  card_id_hash, card_category (enum), holder_gender (enum), result (enum),
   raw_meta (JSON), stored_at
 
 fare_matches            -- 매칭 엔진 결과 (gate_passage event ↔ fare_tap)
@@ -505,21 +505,21 @@ review_queue            -- 의심 큐 (confirmed_misuse + 회색지대 자동 �
 
 ## 5. 공통 스키마 (4트랙 합의 사항)
 
-스키마 실제 파일은 [`packages/schema/`](../packages/schema/) 에 있음 (single source of truth). 본 절은 v0.1.0 → v0.2.0 **변경 요약** 만. 정확한 명세는 schema 파일을 직접 참조.
+스키마 실제 파일은 [`packages/schema/`](../packages/schema/) 에 있음 (single source of truth). 본 절은 v0.1.0 → v0.2.2 **변경 요약** 만. 정확한 명세는 schema 파일을 직접 참조.
 
-### 5-1. `events/event.schema.json` v0.1.0 → **v0.2.0** 변경 요약
+### 5-1. `events/event.schema.json` v0.1.0 → **v0.2.2** 변경 요약
 
 | 필드 | 변경 | 비고 |
 |------|------|------|
 | `event_id` | 🆕 **신규 required** | AI 가 발급 (`evt_<uuid4 hex>`), 백엔드 멱등성 키 (중복 저장 방지) |
-| `event_type` enum | ➕ `misuse` 추가 | 기존 jump/crawling/tailgating/unpaid 그대로. **별도 `type` 필드 신설 안 함** (기존 코드 깨짐 방지) |
+| `event_type` enum | ➕ `gate_passage`, `confirmed_unpaid`, `confirmed_misuse` 추가 / ❌ `misuse` 제거 | AI 는 행동 신호만 발행, 백엔드가 AFC 매칭 후 confirmed_* 발행 |
 | `gate_section_id`, `camera_id`, `track_id`, `confidence`, `timestamp`, `clip_url`, `raw_meta` | 변경 없음 | 기존 v0.1 그대로 — 코드 영향 0 |
 | `signals` | 🆕 신규 optional | face_age_estimate, pose/gait_senior_score, assistive_device_detected, senior_probability, child_probability, estimated_age_group, perceived_gender, gender_confidence |
 | `reliability` | 🆕 신규 optional | enum: low / mid / high |
 | `severity` | 🆕 신규 optional | enum: info / warning / critical (프론트엔드 알림 강도) |
 | `afc_match` | 🆕 신규 optional | 백엔드 매칭 엔진이 채움. AI 는 null 로 발행. fare_tap_id + card_id_hash + card_category + holder_gender + tap_timestamp + time_delta_ms |
 
-### 5-2. `fare-taps/fare_tap.schema.json` v0.1.0 → **v0.2.0** 변경 요약
+### 5-2. `fare-taps/fare_tap.schema.json` v0.1.0 → **v0.2.2** 변경 요약
 
 | 필드 | 변경 | 비고 |
 |------|------|------|
@@ -529,9 +529,9 @@ review_queue            -- 의심 큐 (confirmed_misuse + 회색지대 자동 �
 | `event_type`, `gate_section_id`, `card_id_hash`, `timestamp`, `result` | 변경 없음 | 기존 v0.1 그대로 |
 | `card_id_hash` 패턴 | 변경 없음 | `^sha256:[a-f0-9]{64}$` (접두사 `sha256:` 포함) |
 
-### 5-3. v0.2.0 핵심 결정 사항 (충돌 회피)
+### 5-3. v0.2.2 핵심 결정 사항 (충돌 회피)
 
-1. **`event_type` 구조 유지** — 별도 `type` 필드 만들지 않음. enum 에 `misuse` 만 추가 → 기존 코드/예제/룰 깨지지 않음
+1. **`event_type` 구조 유지** — 별도 `type` 필드 만들지 않음. AI 발행과 백엔드 발행을 enum 값으로 분리
 2. **`card_type` 이름 충돌 회피** — 신규 자격 필드는 `card_category`, 카드 등록 성별은 `holder_gender`. 기존 `raw_meta.card_type` (결제수단) 과 분리
 3. **`event_id` AI 발급** — UUID v4 hex, 백엔드 멱등성 키
 4. **`afc_match` 는 백엔드가 채움** — AI 발행 시 None. 백엔드 매칭 엔진이 ±1초 윈도로 fare_tap 찾아서 업데이트
@@ -545,8 +545,8 @@ review_queue            -- 의심 큐 (confirmed_misuse + 회색지대 자동 �
 ### 5-5. 검증
 
 - 모든 schema + examples 는 `check-jsonschema` 로 CI 자동 검증 ([`.github/workflows/schema-ci.yml`](../.github/workflows/schema-ci.yml))
-- AI 트랙: `apps/ai/src/types.py` 의 `Event` dataclass 가 schema v0.2.0 과 1:1 매칭 — 단위 테스트로 회귀 보호
-- 예제 파일: `event_jump.json`, `event_misuse.json`, `fare_tap_approved.json`, `fare_tap_denied.json`, `fare_tap_senior.json`
+- AI 트랙: `apps/ai/src/types.py` 의 `Event` dataclass 가 schema v0.2.2 와 1:1 매칭되어야 함 — 단위 테스트로 회귀 보호
+- 예제 파일: `event_jump.json`, `event_confirmed_misuse.json`, `fare_tap_approved.json`, `fare_tap_denied.json`, `fare_tap_senior.json`
 
 ### 5-6. API endpoint / 통신 프로토콜 / 인증 / 에러 처리
 
@@ -722,7 +722,7 @@ review_queue            -- 의심 큐 (confirmed_misuse + 회색지대 자동 �
 CCTV → 사람 탐지/추적 → jump/crawling/tailgating/unpaid 룰 → 이벤트 발행
 ```
 
-**MVP (5종 룰 + AFC 매칭):**
+**MVP (AI 행동 이벤트 + AFC 매칭 + 백엔드 확정 판정):**
 ```
 CCTV → 사람 탐지/추적 → zone 매칭                  ┐
                             ↓                       │
@@ -730,9 +730,9 @@ CCTV → 사람 탐지/추적 → zone 매칭                  ┐
                             ↓                       │
                   eligibility_signals (다중 신호)    │
                             ↓                       │
-Mock AFC → fare_tap (card_type) ─────── 매칭 ───────┘
+Mock AFC → fare_tap (card_category + holder_gender) ─ 매칭 ┘
                             ↓
-       5종 룰 (jump/crawling/tailgating/unpaid/misuse)
+       AI 행동 룰 (jump/crawling/tailgating/unpaid/gate_passage)
                             ↓
            이벤트 발행 (signals + reliability + severity)
                             ↓
@@ -740,7 +740,7 @@ Mock AFC → fare_tap (card_type) ─────── 매칭 ─────�
 ```
 
 **핵심 추가:**
-- 5번째 룰 (misuse)
+- 백엔드 confirmed_misuse 판정
 - AFC 매칭
 - pose/age/eligibility_signals 모듈
 - 의심 큐 워크플로우

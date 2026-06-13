@@ -20,9 +20,12 @@ def setup_function() -> None:
 
 
 def test_health() -> None:
-    response = client.get("/health")
+    response = client.get("/api/v1/health")
     assert response.status_code == 200
-    assert response.json()["status"] == "ok"
+    body = response.json()
+    assert body["status"] == "ok"
+    assert isinstance(body["uptime_sec"], int)
+    assert body["schema_version"] == "0.2.1"
 
 
 def test_event_ingest_and_dedupe() -> None:
@@ -183,6 +186,63 @@ def test_auth_logout_invalid_token() -> None:
     response = client.post("/api/v1/auth/logout", headers={"Authorization": "Bearer wrong"})
     assert response.status_code == 401
     assert response.json()["error"]["code"] == "AUTH_INVALID"
+
+
+def test_events_time_filter() -> None:
+    payload = event_payload()
+    client.post("/api/v1/events", json=payload, headers=AI_HEADERS)
+
+    in_range = client.get(
+        "/api/v1/events",
+        headers=OP_HEADERS,
+        params={"from": "2026-05-28T00:00:00+00:00", "to": "2026-05-29T00:00:00+00:00"},
+    )
+    assert in_range.status_code == 200
+    assert in_range.json()["total"] == 1
+
+    out_of_range = client.get(
+        "/api/v1/events",
+        headers=OP_HEADERS,
+        params={"from": "2026-06-01T00:00:00+00:00", "to": "2026-06-02T00:00:00+00:00"},
+    )
+    assert out_of_range.status_code == 200
+    assert out_of_range.json()["total"] == 0
+
+
+def test_events_cursor_pagination() -> None:
+    for i in range(1, 4):
+        client.post(
+            "/api/v1/events",
+            json={
+                "event_id": f"evt_bb{'0' * 28}{i:02d}",
+                "event_type": "jump",
+                "gate_section_id": "gate_01",
+                "camera_id": "camera_001",
+                "confidence": 0.9,
+                "track_id": i,
+                "timestamp": f"2026-05-28T0{i}:00:00.000000+00:00",
+                "severity": "critical",
+                "raw_meta": {},
+            },
+            headers=AI_HEADERS,
+        )
+
+    page1 = client.get("/api/v1/events", headers=OP_HEADERS, params={"limit": 2})
+    assert page1.status_code == 200
+    body1 = page1.json()
+    assert len(body1["data"]) == 2
+    assert body1["next_cursor"] is not None
+
+    page2 = client.get(
+        "/api/v1/events", headers=OP_HEADERS, params={"limit": 2, "cursor": body1["next_cursor"]}
+    )
+    assert page2.status_code == 200
+    body2 = page2.json()
+    assert len(body2["data"]) == 1
+    assert body2["next_cursor"] is None
+
+    all_ids = [e["event_id"] for e in body1["data"]] + [e["event_id"] for e in body2["data"]]
+    assert len(set(all_ids)) == 3
 
 
 def test_wildcard_cors_disables_credentials() -> None:

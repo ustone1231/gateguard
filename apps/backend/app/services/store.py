@@ -78,14 +78,24 @@ class InMemoryStore:
         gate_section_id: str | None = None,
         severity: str | None = None,
         limit: int = 50,
+        from_time: datetime | None = None,
+        to_time: datetime | None = None,
+        cursor_after: tuple[datetime, str] | None = None,
     ) -> list[Event]:
-        events = sorted(self.events.values(), key=lambda e: e.timestamp, reverse=True)
+        events = sorted(self.events.values(), key=lambda e: (e.timestamp, e.event_id), reverse=True)
         if event_type:
             events = [e for e in events if e.event_type == event_type]
         if gate_section_id:
             events = [e for e in events if e.gate_section_id == gate_section_id]
         if severity:
             events = [e for e in events if e.severity == severity]
+        if from_time:
+            events = [e for e in events if e.timestamp >= from_time]
+        if to_time:
+            events = [e for e in events if e.timestamp <= to_time]
+        if cursor_after:
+            cursor_ts, cursor_id = cursor_after
+            events = [e for e in events if (e.timestamp, e.event_id) < (cursor_ts, cursor_id)]
         return events[:limit]
 
     def _run_matching_for_event(self, event: Event) -> list[Event]:

@@ -150,16 +150,29 @@ class SqlStore:
         gate_section_id: str | None = None,
         severity: str | None = None,
         limit: int = 50,
+        from_time=None,
+        to_time=None,
+        cursor_after=None,
     ) -> list[Event]:
         self.flush_matching()
         with self.session_factory() as session:
-            query = select(EventRow).order_by(EventRow.timestamp.desc())
+            query = select(EventRow).order_by(EventRow.timestamp.desc(), EventRow.event_id.desc())
             if event_type:
                 query = query.where(EventRow.event_type == event_type)
             if gate_section_id:
                 query = query.where(EventRow.gate_section_id == gate_section_id)
             if severity:
                 query = query.where(EventRow.severity == severity)
+            if from_time:
+                query = query.where(EventRow.timestamp >= from_time)
+            if to_time:
+                query = query.where(EventRow.timestamp <= to_time)
+            if cursor_after:
+                cursor_ts, cursor_id = cursor_after
+                query = query.where(
+                    (EventRow.timestamp < cursor_ts)
+                    | ((EventRow.timestamp == cursor_ts) & (EventRow.event_id < cursor_id))
+                )
             rows = session.execute(query.limit(limit)).scalars().all()
             return [event_from_row(row) for row in rows]
 

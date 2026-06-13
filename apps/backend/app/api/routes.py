@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import time
+from base64 import b64decode, b64encode
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, WebSocket, WebSocketDisconnect, status
@@ -22,15 +24,32 @@ from app.services.video_clips import (
 
 router = APIRouter()
 
+_APP_START = time.monotonic()
+_SCHEMA_VERSION = "0.2.1"
+
 
 def flush_matching_if_available() -> None:
     if hasattr(store, "flush_matching"):
         store.flush_matching()
 
 
-@router.get("/health")
+@router.get("/api/v1/health")
 def health() -> dict:
-    return {"status": "ok", "service": "gateguard-backend"}
+    return {
+        "status": "ok",
+        "uptime_sec": int(time.monotonic() - _APP_START),
+        "schema_version": _SCHEMA_VERSION,
+    }
+
+
+def _encode_cursor(ts: datetime, event_id: str) -> str:
+    return b64encode(f"{ts.isoformat()}|{event_id}".encode()).decode()
+
+
+def _decode_cursor(cursor: str) -> tuple[datetime, str]:
+    raw = b64decode(cursor.encode()).decode()
+    ts_str, event_id = raw.rsplit("|", 1)
+    return datetime.fromisoformat(ts_str), event_id
 
 
 @router.post("/api/v1/auth/login")
@@ -121,15 +140,31 @@ def list_events(
     gate_section_id: str | None = None,
     severity: str | None = None,
     limit: int = Query(default=50, ge=1, le=200),
+    from_time: datetime | None = Query(default=None, alias="from"),
+    to_time: datetime | None = Query(default=None, alias="to"),
+    cursor: str | None = None,
 ) -> dict:
     flush_matching_if_available()
+    cursor_after: tuple[datetime, str] | None = None
+    if cursor:
+        try:
+            cursor_after = _decode_cursor(cursor)
+        except Exception:
+            raise HTTPException(status_code=400, detail={"code": "BAD_REQUEST", "message": "Invalid cursor"})
     events = store.list_events(
         event_type=event_type,
         gate_section_id=gate_section_id,
         severity=severity,
         limit=limit,
+        from_time=from_time,
+        to_time=to_time,
+        cursor_after=cursor_after,
     )
-    return {"data": events, "next_cursor": None, "total": len(events)}
+    next_cursor = None
+    if len(events) == limit:
+        last = events[-1]
+        next_cursor = _encode_cursor(last.timestamp, last.event_id)
+    return {"data": events, "next_cursor": next_cursor, "total": len(events)}
 
 
 @router.get("/api/v1/events/{event_id}")

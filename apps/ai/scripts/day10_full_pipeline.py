@@ -5,9 +5,11 @@ config/pipeline.json의 publisher.type을 "file" → "http"로 바꾸면
 
 Usage:
     python scripts/day10_full_pipeline.py path/to/test.mp4
+    python scripts/day10_full_pipeline.py path/to/test.mp4 --sections config/gate_sections.local.json
 """
 from __future__ import annotations
 
+import argparse
 import logging
 import sys
 from pathlib import Path
@@ -17,24 +19,31 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from src.pipeline import build_from_config
 
 
-def main(video_path: str) -> None:
+def main() -> None:
+    args = parse_args()
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(message)s",
     )
     pipeline = build_from_config(
-        pipeline_config_path="config/pipeline.json",
-        sections_config_path="config/gate_sections.json",
+        pipeline_config_path=args.config,
+        sections_config_path=args.sections,
     )
     stats = pipeline.run(
-        source=video_path,
-        output_video="runs/day10_output.mp4",
+        source=args.video,
+        output_video=args.output,
     )
     print("stats:", stats)
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("video", help="Video path")
+    parser.add_argument("--config", default="config/pipeline.json")
+    parser.add_argument("--sections", default="config/gate_sections.json")
+    parser.add_argument("--output", default="runs/day10_output.mp4")
+    return parser.parse_args()
+
+
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Usage: python scripts/day10_full_pipeline.py <video_path>")
-        sys.exit(1)
-    main(sys.argv[1])
+    main()

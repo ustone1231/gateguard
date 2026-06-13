@@ -4,7 +4,8 @@ Controls:
     left click  add point
     u           undo last point in current stage
     c           clear current stage
-    n / enter   finish current stage
+    n / enter / space
+                finish current stage
     q / esc     quit
 
 Stages:
@@ -115,6 +116,8 @@ class PointPicker:
     def run(self) -> dict[str, list[list[int]]] | None:
         cv2.namedWindow(self._window, cv2.WINDOW_NORMAL)
         cv2.setMouseCallback(self._window, self._on_mouse)
+        print("click the image window before pressing keys.")
+        print(f"stage: {self._current_stage()}")
 
         while True:
             cv2.imshow(self._window, self._draw())
@@ -122,23 +125,28 @@ class PointPicker:
             if key in (27, ord("q")):
                 cv2.destroyWindow(self._window)
                 return None
-            if key in (13, ord("n")):
+            if key in (10, 13, 32, ord("n")):
                 if self._advance_stage():
                     cv2.destroyWindow(self._window)
                     return self._points
             elif key == ord("u"):
                 current = self._current_stage()
                 if self._points[current]:
-                    self._points[current].pop()
+                    removed = self._points[current].pop()
+                    print(f"{current}: removed {removed} ({len(self._points[current])} points)")
             elif key == ord("c"):
                 self._points[self._current_stage()].clear()
+                print(f"{self._current_stage()}: cleared")
 
     def _on_mouse(self, event, x, y, flags, param) -> None:
         if event != cv2.EVENT_LBUTTONDOWN:
             return
         original_x = int(round(x / self._scale))
         original_y = int(round(y / self._scale))
-        self._points[self._current_stage()].append([original_x, original_y])
+        stage = self._current_stage()
+        point = [original_x, original_y]
+        self._points[stage].append(point)
+        print(f"{stage}: added {point} ({len(self._points[stage])} points)")
 
     def _advance_stage(self) -> bool:
         stage = self._current_stage()
@@ -153,7 +161,7 @@ class PointPicker:
         self._stage_index += 1
         if self._stage_index >= len(STAGES):
             return True
-        print(f"next: {self._current_stage()}")
+        print(f"next stage: {self._current_stage()}")
         return False
 
     def _current_stage(self) -> str:
@@ -181,7 +189,7 @@ class PointPicker:
                 cv2.line(image, scaled[0], scaled[1], color, 3)
 
         stage = self._current_stage()
-        help_text = f"{stage}: click points | n/enter next | u undo | c clear | q quit"
+        help_text = f"{stage}: click points | n/enter/space next | u undo | c clear | q quit"
         cv2.rectangle(image, (0, 0), (image.shape[1], 38), (0, 0, 0), -1)
         cv2.putText(
             image,

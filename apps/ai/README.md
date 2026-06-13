@@ -44,6 +44,29 @@ python scripts/smoke_gate_passage.py
 이 테스트가 통과하면 AI 룰이 “게이트 통과 이벤트를 만들 수 있음”까지 확인된 것.
 실제 영상 검증은 그 다음 단계로 `day10_full_pipeline.py <video_path>` 를 사용.
 
+### Gate section 좌표 찍기
+
+실제 영상 첫 프레임에서 `polygon`, `entry_line`, `exit_line` 좌표를 클릭해서 JSON으로 출력:
+
+```bash
+python scripts/pick_gate_points.py ../../videos/gateguard_test_video.mov
+```
+
+조작:
+- `polygon`: 게이트 영역을 둘러싸는 점 3개 이상 클릭 후 `n`
+- `entry_line`: 선 양끝 2개 클릭 후 `n`
+- `exit_line`: 선 양끝 2개 클릭 후 `n`
+- `u`: 마지막 점 되돌리기
+- `c`: 현재 단계 점 지우기
+- `q`: 종료
+
+파일로 바로 저장:
+
+```bash
+python scripts/pick_gate_points.py ../../videos/gateguard_test_video.mov \
+  --output config/gate_sections.local.json
+```
+
 ## 구조 — 한 눈에
 
 ```

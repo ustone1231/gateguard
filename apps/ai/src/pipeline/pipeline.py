@@ -19,7 +19,7 @@ from ..publisher import EventPublisher
 from ..rules import RuleEngine, TrackHistory
 from ..rules.base import TrackSnapshot
 from ..zone import GateSection, SectionMatcher
-from ..zone.geometry import foot_point, line_crossing_direction
+from ..zone.geometry import foot_point, line_crossing_direction, point_in_polygon
 from .visualizer import Visualizer
 
 log = logging.getLogger(__name__)
@@ -126,6 +126,11 @@ class Pipeline:
                     exit_direction = None
                     if prev is not None:
                         for s_id, section in self.sections.items():
+                            if not (
+                                point_in_polygon(prev, section.polygon)
+                                or point_in_polygon(foot, section.polygon)
+                            ):
+                                continue
                             entry_dir = line_crossing_direction(prev, foot, section.entry_line)
                             exit_dir = line_crossing_direction(prev, foot, section.exit_line)
                             if entry_dir != 0:

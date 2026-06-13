@@ -59,6 +59,10 @@ outputs/
 *.tfvars
 !*.tfvars.example
 
+# ─── Claude Code (개인 설정 — 이 폴더 한정, 팀 공유 X) ───
+CLAUDE.local.md
+.claude/
+
 # ─── Misc ──────────────────────────────────
 *.bak
 *.tmp

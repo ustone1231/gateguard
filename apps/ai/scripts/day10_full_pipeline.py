@@ -6,6 +6,7 @@ config/pipeline.json의 publisher.type을 "file" → "http"로 바꾸면
 Usage:
     python scripts/day10_full_pipeline.py path/to/test.mp4
     python scripts/day10_full_pipeline.py path/to/test.mp4 --sections config/gate_sections.local.json
+    python scripts/day10_full_pipeline.py path/to/test.mp4 --start-sec 12
 """
 from __future__ import annotations
 
@@ -32,6 +33,7 @@ def main() -> None:
     stats = pipeline.run(
         source=args.video,
         output_video=args.output,
+        start_sec=args.start_sec,
     )
     print("stats:", stats)
 
@@ -42,6 +44,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--config", default="config/pipeline.json")
     parser.add_argument("--sections", default="config/gate_sections.json")
     parser.add_argument("--output", default="runs/day10_output.mp4")
+    parser.add_argument("--start-sec", type=float, default=0.0)
     return parser.parse_args()
 
 

@@ -106,7 +106,9 @@ class SqlStore:
     def __init__(self, database_url: str):
         self.engine = create_engine(normalize_database_url(database_url), future=True)
         self.session_factory = sessionmaker(self.engine, expire_on_commit=False, future=True)
-        Base.metadata.create_all(self.engine)
+        # SQLite(로컬 개발)만 create_all 사용. PostgreSQL은 alembic upgrade head가 담당.
+        if self.engine.dialect.name == "sqlite":
+            Base.metadata.create_all(self.engine)
 
     def reset(self) -> None:
         with self.session_factory() as session:

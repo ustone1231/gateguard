@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, WebSocket, WebSocketDisconnect, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 
@@ -43,6 +43,24 @@ def login(payload: dict) -> dict:
         "refresh_token": settings.jwt_secret,
         "expires_in": 900,
     }
+
+
+@router.post("/api/v1/auth/refresh")
+def refresh_token(payload: dict) -> dict:
+    token = payload.get("refresh_token", "")
+    if token != settings.jwt_secret:
+        raise HTTPException(status_code=401, detail={"code": "AUTH_INVALID", "message": "Invalid refresh token"})
+    return {
+        "access_token": settings.jwt_secret,
+        "expires_in": 900,
+    }
+
+
+@router.post("/api/v1/auth/logout", status_code=204)
+def logout(authorization: str | None = Header(default=None)) -> Response:
+    if authorization != f"Bearer {settings.jwt_secret}":
+        raise HTTPException(status_code=401, detail={"code": "AUTH_INVALID", "message": "Invalid token"})
+    return Response(status_code=204)
 
 
 @router.post("/api/v1/events")

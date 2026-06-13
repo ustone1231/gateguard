@@ -15,7 +15,7 @@ from __future__ import annotations
 import statistics
 from typing import Optional
 
-from .base import Rule, TrackHistory
+from .base import Rule, SustainedEventDebouncer, TrackHistory
 from ..types import Event
 from ..zone import GateSection
 
@@ -29,10 +29,17 @@ class JumpRule(Rule):
         top_speed_threshold: float = 15.0,    # px / frame (위로 이동)
         height_std_threshold: float = 30.0,   # px
         min_history_frames: int = 10,
+        min_consecutive_frames: int = 3,      # 이만큼 연속 만족해야 1회 발화
+        reset_after_misses: int = 3,          # 이만큼 끊겨야 다음 점프를 새 이벤트로
     ):
         self._top_speed_th = top_speed_threshold
         self._height_std_th = height_std_threshold
         self._min_history = min_history_frames
+        # 동일 점프가 수십 프레임 연속 발화하는 것을 1건으로 묶음 (P0)
+        self._debounce = SustainedEventDebouncer(
+            min_consecutive_frames=min_consecutive_frames,
+            reset_after_misses=reset_after_misses,
+        )
 
     def evaluate(
         self,
@@ -41,6 +48,10 @@ class JumpRule(Rule):
         all_histories: dict[int, TrackHistory],
         camera_id: str,
     ) -> Optional[Event]:
+        candidate = self._detect(history, camera_id)
+        return self._debounce.feed(history.track_id, candidate)
+
+    def _detect(self, history: TrackHistory, camera_id: str) -> Optional[Event]:
         snaps = list(history.snapshots)
         if len(snaps) < self._min_history:
             return None

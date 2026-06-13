@@ -21,13 +21,15 @@
       "top_speed_threshold": 15.0,
       "height_std_threshold": 30.0,
       "min_history_frames": 10,
-      "cooldown_seconds": 3.0
+      "cooldown_seconds": 0.0,
+      "_comment_cooldown": "중복 발화 제거는 JumpRule 내부 디바운스가 담당하므로 cooldown=0 으로 두어 엔진이 매 프레임 평가하게 함"
     },
     "crawling": {
       "enabled": true,
       "height_ratio_threshold": 0.55,
       "min_frames_crawling": 8,
-      "cooldown_seconds": 3.0
+      "cooldown_seconds": 0.0,
+      "_comment_cooldown": "중복 발화 제거는 CrawlingRule 내부 디바운스가 담당하므로 cooldown=0"
     },
     "tailgating": {
       "enabled": true,

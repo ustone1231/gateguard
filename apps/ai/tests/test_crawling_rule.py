@@ -26,10 +26,18 @@ def _tall_then_short(tall_n=30, tall_h=200.0, short_n=10, short_h=80.0):
     return bboxes
 
 
+def _fire(rule, hist, track_id=5):
+    """CrawlingRule 은 내부 디바운스로 연속 만족해야 발행."""
+    event = None
+    for _ in range(3):
+        event = rule.evaluate(hist, {}, {track_id: hist}, "camera_001")
+    return event
+
+
 def test_crawling_fires_when_height_drops():
     rule = CrawlingRule()
     hist = _history(_tall_then_short())  # baseline 200 → recent 80, ratio 0.4
-    event = rule.evaluate(hist, {}, {5: hist}, "camera_001")
+    event = _fire(rule, hist)
 
     assert event is not None
     assert event.event_type == "crawling"
@@ -60,6 +68,6 @@ def test_crawling_silent_when_no_section():
 def test_crawling_confidence_clamped():
     rule = CrawlingRule()
     hist = _history(_tall_then_short(short_h=20.0))  # 극단적으로 낮은 자세
-    event = rule.evaluate(hist, {}, {5: hist}, "camera_001")
+    event = _fire(rule, hist)
     assert event is not None
     assert 0.5 <= event.confidence <= 0.95

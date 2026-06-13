@@ -146,6 +146,45 @@ def test_auth_required_for_ingest() -> None:
     assert body["error"]["request_id"].startswith("req_")
 
 
+def test_auth_login_success() -> None:
+    response = client.post("/api/v1/auth/login", json={"username": "op", "password": "pass"})
+    assert response.status_code == 200
+    body = response.json()
+    assert "access_token" in body
+    assert "refresh_token" in body
+
+
+def test_auth_refresh_success() -> None:
+    response = client.post("/api/v1/auth/refresh", json={"refresh_token": settings.jwt_secret})
+    assert response.status_code == 200
+    body = response.json()
+    assert body["access_token"] == settings.jwt_secret
+    assert "expires_in" in body
+
+
+def test_auth_refresh_invalid() -> None:
+    response = client.post("/api/v1/auth/refresh", json={"refresh_token": "wrong-token"})
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "AUTH_INVALID"
+
+
+def test_auth_logout_success() -> None:
+    response = client.post("/api/v1/auth/logout", headers=OP_HEADERS)
+    assert response.status_code == 204
+
+
+def test_auth_logout_no_header() -> None:
+    response = client.post("/api/v1/auth/logout")
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "AUTH_REQUIRED"
+
+
+def test_auth_logout_invalid_token() -> None:
+    response = client.post("/api/v1/auth/logout", headers={"Authorization": "Bearer wrong"})
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "AUTH_INVALID"
+
+
 def test_wildcard_cors_disables_credentials() -> None:
     response = client.options(
         "/api/v1/events",

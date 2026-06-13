@@ -58,6 +58,8 @@ def refresh_token(payload: dict) -> dict:
 
 @router.post("/api/v1/auth/logout", status_code=204)
 def logout(authorization: str | None = Header(default=None)) -> Response:
+    if authorization is None:
+        raise HTTPException(status_code=401, detail={"code": "AUTH_REQUIRED", "message": "Authorization header missing"})
     if authorization != f"Bearer {settings.jwt_secret}":
         raise HTTPException(status_code=401, detail={"code": "AUTH_INVALID", "message": "Invalid token"})
     return Response(status_code=204)

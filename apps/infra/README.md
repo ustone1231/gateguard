@@ -40,6 +40,9 @@ apps/infra/
 | `DATABASE_URL` | `backend` | `postgres://gateguard:gateguard@db:5432/gateguard` | 백엔드 → TimescaleDB 연결 |
 | `NEXT_PUBLIC_API_URL` | `frontend` | `http://localhost:8000` | 브라우저에서 백엔드 API 호출 시 사용 |
 
+> dev 는 위 값들이 compose 기본값(`${VAR:-기본값}`)으로 자동 적용된다. 실값 주입·secret 분리·prod 운영 방식은
+> [`docs/secret-management.md`](../../docs/secret-management.md) 참고. 템플릿: 루트 [`.env.example`](../../.env.example).
+
 ## 시작하기
 
 ```bash

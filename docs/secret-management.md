@@ -31,6 +31,10 @@
 | `BACKEND_URL` | ai → backend base URL | `http://backend:8000` (compose 내부 고정) |
 | `NEXT_PUBLIC_API_URL` | frontend → backend (브라우저 노출) | `http://localhost:8000` |
 | `STORAGE_BACKEND` | backend 저장소 모드 | `sql` |
+| `CORS_ALLOW_ORIGINS` | backend CORS 허용 오리진 | `*` (prod 은 프론트 오리진으로 제한) |
+
+> 클립 저장 관련 backend env(`VIDEO_CLIP_DIR` / `VIDEO_CLIP_TTL_HOURS` / `VIDEO_CLIP_SIGNED_URL_TTL_SECONDS`)는
+> 본 문서 범위 밖 — "클립 저장소" 마일스톤에서 별도 관리한다.
 
 ## 3. 주입 메커니즘
 
@@ -45,6 +49,7 @@ backend:
     - JWT_SECRET=${JWT_SECRET:-dev-jwt-secret-please-change-before-prod}
     - CARD_HASH_SALT=${CARD_HASH_SALT:-dev-card-hash-salt}
     - STORAGE_BACKEND=${STORAGE_BACKEND:-sql}
+    - CORS_ALLOW_ORIGINS=${CORS_ALLOW_ORIGINS:-*}
 ai:
   environment:
     - AI_SERVICE_TOKEN=${AI_SERVICE_TOKEN:-dev-ai-service-token-please-change-32}
@@ -56,8 +61,11 @@ db:
     - POSTGRES_DB=${POSTGRES_DB:-gateguard}
 ```
 
-> `CARD_HASH_SALT` 는 현재 compose 에서 backend 에 주입되지 않아 backend 가 자체 기본값을 쓴다.
-> Mock AFC sender 와 salt 가 어긋나면 카드 매칭이 깨지므로, 본 설계에서 backend 서비스에 주입을 추가한다.
+> `CARD_HASH_SALT` 는 기존 compose 에서 backend 에 주입되지 않았고, backend 자체 기본값
+> (`config.py`: `dev-card-hash-salt-change-before-prod`)과 Mock AFC sender 기본값
+> (`send_tap.py`: `dev-card-hash-salt`)이 **서로 달라** 무설정 시 카드 매칭이 깨질 수 있다.
+> 본 설계는 backend 에 `CARD_HASH_SALT` 를 주입해 단일 값(`dev-card-hash-salt`)으로 통일한다.
+> backend 트랙은 위 두 코드 기본값을 동일하게 정리하는 것을 권장한다(값 소유: backend).
 
 ## 4. 파일 구조 (repo 루트)
 
@@ -111,7 +119,8 @@ docker compose --env-file .env.prod -f docker-compose.prod.yml up -d
 
 ## 7. 운영 호스트(데스크탑) 주의
 
-- `.env.prod` 는 24/7 데스크탑 호스트에만 두고 파일 권한을 제한한다.
+- `.env.prod` 는 24/7 데스크탑 호스트(`tyler-pc`)에만 두고 파일 권한을 제한한다.
+- 데스크탑은 **Tailscale**로 접근한다(`tyler-pc.tail87a6d1.ts.net`). 팀/Mac → 서버 접근이 Tailscale 주소로 이뤄지므로 LAN 개방·방화벽 인바운드가 필요 없다. 따라서 prod `.env.prod` 의 `NEXT_PUBLIC_API_URL` 은 Tailscale MagicDNS 주소(예: `http://tyler-pc.tail87a6d1.ts.net:8000`)로 둔다.
 - staging 이 필요해지면 `.env.staging` 1파일 추가로 동일 패턴 확장(지금은 만들지 않음 — YAGNI).
 
 ## 8. 구현 체크리스트 (이 문서 = spec)

@@ -13,7 +13,7 @@ class Settings:
     database_url: str = getenv("DATABASE_URL", "sqlite:///./gateguard.db")
     storage_backend: str = getenv("STORAGE_BACKEND", "memory")
     cors_allow_origins: str = getenv("CORS_ALLOW_ORIGINS", "*")
-    card_hash_salt: str = getenv("CARD_HASH_SALT", "dev-card-hash-salt-change-before-prod")
+    card_hash_salt: str = getenv("CARD_HASH_SALT", "dev-card-hash-salt")
     video_clip_dir: str = getenv("VIDEO_CLIP_DIR", "/tmp/gateguard-clips")
     video_clip_ttl_hours: int = int(getenv("VIDEO_CLIP_TTL_HOURS", "24"))
     video_clip_signed_url_ttl_seconds: int = int(getenv("VIDEO_CLIP_SIGNED_URL_TTL_SECONDS", "300"))

@@ -1,0 +1,40 @@
+import { NavLink, Outlet } from 'react-router-dom'
+import { logout } from '../lib/auth'
+import styles from './Layout.module.css'
+
+const NAV = [
+  { to: '/',             label: '🏠 대시보드' },
+  { to: '/events',       label: '📋 이벤트 목록' },
+  { to: '/review-queue', label: '⚠️ 의심 큐' },
+  { to: '/stats',        label: '📊 통계' },
+]
+
+export default function Layout() {
+  return (
+    <div className={styles.shell}>
+      <aside className={styles.sidebar}>
+        <div className={styles.logo}>🛡 GateGuard</div>
+        <nav className={styles.nav}>
+          {NAV.map(({ to, label }) => (
+            <NavLink
+              key={to}
+              to={to}
+              end={to === '/'}
+              className={({ isActive }) =>
+                `${styles.link} ${isActive ? styles.active : ''}`
+              }
+            >
+              {label}
+            </NavLink>
+          ))}
+        </nav>
+        <button className={styles.logout} onClick={logout}>
+          로그아웃
+        </button>
+      </aside>
+      <main className={styles.main}>
+        <Outlet />
+      </main>
+    </div>
+  )
+}

@@ -103,7 +103,7 @@ Docker compose 환경에서는 `STORAGE_BACKEND=sql` 과 Postgres `DATABASE_URL`
 ### 서버 확인
 
 ```bash
-curl http://localhost:8000/health
+curl http://localhost:8000/api/v1/health
 ```
 
 운영자 조회 API 는 개발용 토큰을 사용합니다.

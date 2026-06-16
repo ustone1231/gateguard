@@ -1,0 +1,317 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #f1f5f9;
+  margin: 0;
+}
+
+/* ── 필터 탭 ── */
+.tabs {
+  display: flex;
+  gap: 8px;
+}
+
+.tab {
+  padding: 6px 16px;
+  border-radius: 6px;
+  border: 1px solid #334155;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.tab.active {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+  color: #fff;
+}
+
+/* ── 목록 테이블 ── */
+.tableWrap {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.table th {
+  text-align: left;
+  padding: 10px 14px;
+  color: #64748b;
+  font-weight: 600;
+  border-bottom: 1px solid #334155;
+  white-space: nowrap;
+}
+
+.table td {
+  padding: 12px 14px;
+  color: #cbd5e1;
+  border-bottom: 1px solid #1e293b;
+}
+
+.row {
+  cursor: pointer;
+}
+
+.row:hover td {
+  background: #1e293b;
+}
+
+.empty {
+  color: #64748b;
+  text-align: center;
+  padding: 60px 0;
+}
+
+/* ── 상태 배지 ── */
+.badge {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.badge_pending        { background: #1e3a5f; color: #60a5fa; }
+.badge_confirmed      { background: #14532d; color: #4ade80; }
+.badge_false_positive { background: #1f2937; color: #94a3b8; }
+
+/* ── 페이지네이션 ── */
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.pageBtn {
+  padding: 6px 18px;
+  border-radius: 6px;
+  border: 1px solid #334155;
+  background: #1e293b;
+  color: #94a3b8;
+  cursor: pointer;
+}
+
+.pageBtn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* ── 상세 페이지 ── */
+.back {
+  background: none;
+  border: none;
+  color: #60a5fa;
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 0;
+  width: fit-content;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.videoWrap {
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  overflow: hidden;
+  aspect-ratio: 16/9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.noVideo {
+  color: #475569;
+  font-size: 0.9rem;
+}
+
+.meta {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.section {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  padding: 16px 20px;
+}
+
+.sectionTitle {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 12px;
+}
+
+.dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 16px;
+  margin: 0;
+}
+
+.dl dt {
+  color: #64748b;
+  font-size: 0.85rem;
+}
+
+.dl dd {
+  color: #cbd5e1;
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+/* ── senior_probability 바 ── */
+.probWrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.probBar {
+  flex: 1;
+  height: 8px;
+  background: #1e293b;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.probFill {
+  height: 100%;
+  border-radius: 4px;
+  background: #4ade80;
+  transition: width 0.3s;
+}
+
+.probFill.low  { background: #4ade80; }
+.probFill.mid  { background: #f59e0b; }
+.probFill.high { background: #ef4444; }
+
+.probLabel {
+  font-size: 0.85rem;
+  color: #cbd5e1;
+  min-width: 40px;
+  text-align: right;
+}
+
+/* ── 피드백 버튼 ── */
+.feedbackSection {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.notes {
+  width: 100%;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  color: #cbd5e1;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  resize: vertical;
+  min-height: 60px;
+  box-sizing: border-box;
+}
+
+.btnRow {
+  display: flex;
+  gap: 10px;
+}
+
+.btnConfirm {
+  flex: 1;
+  padding: 10px;
+  border-radius: 6px;
+  border: none;
+  background: #15803d;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.btnFp {
+  flex: 1;
+  padding: 10px;
+  border-radius: 6px;
+  border: none;
+  background: #1e293b;
+  color: #94a3b8;
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 0.9rem;
+  border: 1px solid #334155;
+}
+
+.btnConfirm:disabled,
+.btnFp:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.reviewed {
+  text-align: center;
+  color: #64748b;
+  font-size: 0.9rem;
+  padding: 8px 0;
+}
+
+/* ── 토스트 ── */
+.toast {
+  position: fixed;
+  bottom: 32px;
+  right: 32px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 12px 20px;
+  color: #f1f5f9;
+  font-size: 0.9rem;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  animation: fadeIn 0.2s ease;
+  z-index: 9999;
+}
+
+.toast.success { border-left: 4px solid #4ade80; }
+.toast.error   { border-left: 4px solid #ef4444; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.state {
+  color: #64748b;
+  text-align: center;
+  padding: 60px 0;
+}

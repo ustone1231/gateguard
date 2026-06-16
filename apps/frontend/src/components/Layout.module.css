@@ -39,6 +39,7 @@
   color: #94a3b8;
   text-decoration: none;
   font-size: 0.9rem;
+  text-align: left;
   transition: background 0.15s, color 0.15s;
 }
 

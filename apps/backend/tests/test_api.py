@@ -58,6 +58,70 @@ def test_fare_tap_matching_creates_review_queue_for_misuse() -> None:
     assert len(queue.json()["data"]) == 1
 
 
+def test_gender_mismatch_requires_high_confidence() -> None:
+    event = event_payload() | {
+        "event_id": "evt_eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "signals": {
+            "perceived_gender": "male",
+            "gender_confidence": 0.79,
+        },
+    }
+    tap = fare_tap_payload() | {
+        "fare_tap_id": "tap_gender_low_confidence",
+        "card_category": "regular",
+        "holder_gender": "female",
+        "timestamp": "2026-05-28T03:42:11.400000+00:00",
+    }
+
+    client.post("/api/v1/events", json=event, headers=AI_HEADERS)
+    client.post("/api/v1/fare-taps", json=tap, headers=AFC_HEADERS)
+    assert client.get("/api/v1/events?event_type=confirmed_misuse", headers=OP_HEADERS).json()["total"] == 0
+
+    high_confidence_event = event | {
+        "event_id": "evt_ffffffffffffffffffffffffffffffff",
+        "track_id": 8,
+        "timestamp": "2026-05-28T03:42:15.000000+00:00",
+        "signals": {
+            "perceived_gender": "male",
+            "gender_confidence": 0.83,
+        },
+    }
+    high_confidence_tap = tap | {
+        "fare_tap_id": "tap_gender_high_confidence",
+        "timestamp": "2026-05-28T03:42:15.300000+00:00",
+    }
+
+    created = client.post("/api/v1/events", json=high_confidence_event, headers=AI_HEADERS)
+    matched = client.post("/api/v1/fare-taps", json=high_confidence_tap, headers=AFC_HEADERS)
+
+    assert created.status_code == 201
+    assert matched.status_code == 201
+    assert len(matched.json()["derived_event_ids"]) == 1
+    assert client.get("/api/v1/events?event_type=confirmed_misuse", headers=OP_HEADERS).json()["total"] == 1
+
+
+def test_child_card_mismatch_uses_child_probability() -> None:
+    event = event_payload() | {
+        "event_id": "evt_11111111111111111111111111111111",
+        "signals": {
+            "child_probability": 0.12,
+            "estimated_age_group": "adult",
+            "age_group_confidence": 0.88,
+        },
+    }
+    tap = fare_tap_payload() | {
+        "fare_tap_id": "tap_child_mismatch",
+        "card_category": "child",
+        "holder_gender": "unknown",
+    }
+
+    client.post("/api/v1/events", json=event, headers=AI_HEADERS)
+    matched = client.post("/api/v1/fare-taps", json=tap, headers=AFC_HEADERS)
+
+    assert matched.status_code == 201
+    assert len(matched.json()["derived_event_ids"]) == 1
+
+
 def test_websocket_receives_realtime_event() -> None:
     with client.websocket_connect(f"/ws/v1/events?token={settings.jwt_secret}") as websocket:
         heartbeat = websocket.receive_json()
@@ -228,6 +292,7 @@ def fare_tap_payload() -> dict:
         "gate_section_id": "gate_01",
         "card_id_hash": "sha256:" + "a" * 64,
         "card_category": "senior",
+        "holder_gender": "female",
         "timestamp": "2026-05-28T03:42:11.500000+00:00",
         "result": "approved",
         "raw_meta": {"fare_amount": 0, "card_type": "Senior_Pass"},

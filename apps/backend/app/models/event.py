@@ -15,6 +15,8 @@ EventType = Literal[
     "confirmed_unpaid",
     "confirmed_misuse",
 ]
+Gender = Literal["male", "female", "unknown"]
+AgeGroup = Literal["child", "youth", "adult", "senior", "unknown"]
 
 
 class Signals(BaseModel):
@@ -26,6 +28,11 @@ class Signals(BaseModel):
     assistive_device_detected: bool | None = None
     assistive_device_type: Literal["cane", "walker", "wheelchair"] | None = None
     senior_probability: float | None = Field(default=None, ge=0, le=1)
+    child_probability: float | None = Field(default=None, ge=0, le=1)
+    estimated_age_group: AgeGroup | None = None
+    age_group_confidence: float | None = Field(default=None, ge=0, le=1)
+    perceived_gender: Gender | None = None
+    gender_confidence: float | None = Field(default=None, ge=0, le=1)
 
 
 class AfcMatch(BaseModel):
@@ -34,6 +41,7 @@ class AfcMatch(BaseModel):
     fare_tap_id: str = Field(pattern=r"^tap_[a-zA-Z0-9_-]+$")
     card_id_hash: str = Field(pattern=r"^sha256:[a-f0-9]{64}$")
     card_category: Literal["regular", "senior", "child", "disabled", "national_merit"]
+    holder_gender: Gender = "unknown"
     tap_timestamp: datetime
     time_delta_ms: int | None = None
 

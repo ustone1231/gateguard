@@ -14,7 +14,7 @@
     "gate_passage": {
       "enabled": true,
       "recent_window_frames": 3,
-      "cooldown_seconds": 1.0
+      "cooldown_seconds": 0.0
     },
     "jump": {
       "enabled": true,

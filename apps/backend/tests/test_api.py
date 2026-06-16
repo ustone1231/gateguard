@@ -231,6 +231,7 @@ def test_events_cursor_pagination() -> None:
     assert page1.status_code == 200
     body1 = page1.json()
     assert len(body1["data"]) == 2
+    assert body1["total"] == 3
     assert body1["next_cursor"] is not None
 
     page2 = client.get(
@@ -239,6 +240,7 @@ def test_events_cursor_pagination() -> None:
     assert page2.status_code == 200
     body2 = page2.json()
     assert len(body2["data"]) == 1
+    assert body2["total"] == 3
     assert body2["next_cursor"] is None
 
     all_ids = [e["event_id"] for e in body1["data"]] + [e["event_id"] for e in body2["data"]]

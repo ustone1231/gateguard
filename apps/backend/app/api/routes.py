@@ -155,16 +155,24 @@ def list_events(
         event_type=event_type,
         gate_section_id=gate_section_id,
         severity=severity,
-        limit=limit,
+        limit=limit + 1,
         from_time=from_time,
         to_time=to_time,
         cursor_after=cursor_after,
     )
+    total = store.count_events(
+        event_type=event_type,
+        gate_section_id=gate_section_id,
+        severity=severity,
+        from_time=from_time,
+        to_time=to_time,
+    )
+    page_events = events[:limit]
     next_cursor = None
-    if len(events) == limit:
-        last = events[-1]
+    if len(events) > limit:
+        last = page_events[-1]
         next_cursor = _encode_cursor(last.timestamp, last.event_id)
-    return {"data": events, "next_cursor": next_cursor, "total": len(events)}
+    return {"data": page_events, "next_cursor": next_cursor, "total": total}
 
 
 @router.get("/api/v1/events/{event_id}")

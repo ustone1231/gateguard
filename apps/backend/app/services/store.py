@@ -82,6 +82,43 @@ class InMemoryStore:
         to_time: datetime | None = None,
         cursor_after: tuple[datetime, str] | None = None,
     ) -> list[Event]:
+        events = self._filtered_events(
+            event_type=event_type,
+            gate_section_id=gate_section_id,
+            severity=severity,
+            from_time=from_time,
+            to_time=to_time,
+            cursor_after=cursor_after,
+        )
+        return events[:limit]
+
+    def count_events(
+        self,
+        event_type: str | None = None,
+        gate_section_id: str | None = None,
+        severity: str | None = None,
+        from_time: datetime | None = None,
+        to_time: datetime | None = None,
+    ) -> int:
+        return len(
+            self._filtered_events(
+                event_type=event_type,
+                gate_section_id=gate_section_id,
+                severity=severity,
+                from_time=from_time,
+                to_time=to_time,
+            )
+        )
+
+    def _filtered_events(
+        self,
+        event_type: str | None = None,
+        gate_section_id: str | None = None,
+        severity: str | None = None,
+        from_time: datetime | None = None,
+        to_time: datetime | None = None,
+        cursor_after: tuple[datetime, str] | None = None,
+    ) -> list[Event]:
         events = sorted(self.events.values(), key=lambda e: (e.timestamp, e.event_id), reverse=True)
         if event_type:
             events = [e for e in events if e.event_type == event_type]
@@ -96,7 +133,7 @@ class InMemoryStore:
         if cursor_after:
             cursor_ts, cursor_id = cursor_after
             events = [e for e in events if (e.timestamp, e.event_id) < (cursor_ts, cursor_id)]
-        return events[:limit]
+        return events
 
     def _run_matching_for_event(self, event: Event) -> list[Event]:
         if event.event_type != "gate_passage":

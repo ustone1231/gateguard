@@ -22,8 +22,8 @@ services:
       - PYTHONUNBUFFERED=1
       # AI HttpPublisher 우선순위: BACKEND_URL env > pipeline.json http_endpoint > localhost:8000
       # base URL 만 전달 — path(/api/v1/events)는 AI 코드에서 결합 (이슈 #3 합의)
-      - BACKEND_URL=http://backend:8000
-      - AI_SERVICE_TOKEN=dev-ai-service-token-please-change-32
+      - BACKEND_URL=${BACKEND_URL:-http://backend:8000}
+      - AI_SERVICE_TOKEN=${AI_SERVICE_TOKEN:-dev-ai-service-token-please-change-32}
       - YOLO_CONFIG_DIR=/tmp/Ultralytics
     deploy:
       resources:
@@ -44,11 +44,13 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgres://gateguard:gateguard@db:5432/gateguard
-      - AI_SERVICE_TOKEN=dev-ai-service-token-please-change-32
-      - AFC_SERVICE_TOKEN=dev-afc-service-token-please-change-32
-      - JWT_SECRET=dev-jwt-secret-please-change-before-prod
-      - STORAGE_BACKEND=sql
+      - DATABASE_URL=postgres://${POSTGRES_USER:-gateguard}:${POSTGRES_PASSWORD:-gateguard}@db:5432/${POSTGRES_DB:-gateguard}
+      - AI_SERVICE_TOKEN=${AI_SERVICE_TOKEN:-dev-ai-service-token-please-change-32}
+      - AFC_SERVICE_TOKEN=${AFC_SERVICE_TOKEN:-dev-afc-service-token-please-change-32}
+      - JWT_SECRET=${JWT_SECRET:-dev-jwt-secret-please-change-before-prod}
+      - CARD_HASH_SALT=${CARD_HASH_SALT:-dev-card-hash-salt}
+      - STORAGE_BACKEND=${STORAGE_BACKEND:-sql}
+      - CORS_ALLOW_ORIGINS=${CORS_ALLOW_ORIGINS:-*}
     depends_on:
       db:
         condition: service_healthy
@@ -62,7 +64,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
     depends_on:
       - backend
     # TODO: 프론트 스택 결정 후 채움
@@ -72,9 +74,9 @@ services:
     image: timescale/timescaledb:latest-pg15
     container_name: gateguard-db
     environment:
-      - POSTGRES_USER=gateguard
-      - POSTGRES_PASSWORD=gateguard
-      - POSTGRES_DB=gateguard
+      - POSTGRES_USER=${POSTGRES_USER:-gateguard}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-gateguard}
+      - POSTGRES_DB=${POSTGRES_DB:-gateguard}
     ports:
       - "5432:5432"
     volumes:

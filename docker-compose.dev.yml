@@ -49,6 +49,11 @@ services:
       - AFC_SERVICE_TOKEN=dev-afc-service-token-please-change-32
       - JWT_SECRET=dev-jwt-secret-please-change-before-prod
       - STORAGE_BACKEND=sql
+      - VIDEO_CLIP_DIR=/var/lib/gateguard/clips
+      - VIDEO_CLIP_TTL_HOURS=24
+      - VIDEO_CLIP_SIGNED_URL_TTL_SECONDS=300
+    volumes:
+      - ./videos/clips:/var/lib/gateguard/clips
     depends_on:
       db:
         condition: service_healthy

@@ -20,7 +20,8 @@ apps/infra/
 ├── scripts/
 │   ├── deploy.sh          # 운영 서버 배포
 │   ├── rollback.sh
-│   └── seed_data.sh
+│   ├── seed_data.sh
+│   └── verify_db.sh       # DB 마이그레이션/hypertable 스모크 검증 (이슈 #16)
 └── terraform/  or k8s/    # 클라우드 / 오케스트레이션 (확장 시)
 ```
 
@@ -50,6 +51,19 @@ docker compose -f docker-compose.dev.yml up
 각 트랙이 Dockerfile을 채울 때마다 `docker-compose.dev.yml` 에서
 해당 서비스의 `build:` / `image:` 를 주석 해제.
 현재 완료된 트랙: `ai` (Dockerfile.ai).
+
+## DB 스모크 검증
+
+backend 컨테이너가 Alembic migration 을 실제로 적용했는지(TimescaleDB hypertable,
+`alembic_version` = 최신 head, migration 0004 복합 PK) 재현 가능하게 확인:
+
+```bash
+docker compose -f docker-compose.dev.yml up -d --build db backend
+apps/infra/scripts/verify_db.sh
+```
+
+fresh Docker DB 와 운영 DB 의 schema drift 방지용. 전부 통과하면 종료코드 `0`.
+배경: 이슈 #16 (Docker backend 가 migration 미실행 → hypertable 미적용).
 
 ## 릴리즈 절차
 

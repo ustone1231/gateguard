@@ -40,6 +40,9 @@ apps/infra/
 | `AFC_SERVICE_TOKEN` | `backend` | `dev-afc-service-token-please-change-32` | Mock AFC → 백엔드 `/api/v1/fare-taps` 호출용 Bearer 토큰 |
 | `DATABASE_URL` | `backend` | `postgres://gateguard:gateguard@db:5432/gateguard` | 백엔드 → TimescaleDB 연결 |
 | `NEXT_PUBLIC_API_URL` | `frontend` | `http://localhost:8000` | 브라우저에서 백엔드 API 호출 시 사용 |
+| `VIDEO_CLIP_DIR` | `backend` | `/var/lib/gateguard/clips` | 이벤트 영상 클립 저장 경로 |
+| `VIDEO_CLIP_TTL_HOURS` | `backend` | `24` | 로컬 클립 보관 시간 |
+| `VIDEO_CLIP_SIGNED_URL_TTL_SECONDS` | `backend` | `300` | 서명 클립 URL 유효 시간 |
 
 ## 시작하기
 
@@ -51,6 +54,18 @@ docker compose -f docker-compose.dev.yml up
 각 트랙이 Dockerfile을 채울 때마다 `docker-compose.dev.yml` 에서
 해당 서비스의 `build:` / `image:` 를 주석 해제.
 현재 완료된 트랙: `ai` (Dockerfile.ai).
+
+## 영상 클립 저장소
+
+MVP에서는 별도 S3/MinIO를 붙이지 않고 로컬 디스크를 사용한다. dev compose는
+호스트 `./videos/clips`를 backend 컨테이너의 `/var/lib/gateguard/clips`에
+마운트한다. backend는 이벤트 `clip_url` 또는 `<event_id>.mp4|.mov|.webm`
+파일을 이 디렉터리 아래에서 찾고, 인증된 요청에만 짧은 만료 시간을 가진
+서명 URL을 발급한다.
+
+RTX 3060 12GB 단일 PC 기준에서는 이 구조가 가장 가볍다. 저장량, 동시 재생,
+여러 카메라 입력이 실제 병목이 되면 그때 Video/Storage Worker와 S3 호환
+스토리지를 별도 마일스톤으로 분리한다.
 
 ## DB 스모크 검증
 

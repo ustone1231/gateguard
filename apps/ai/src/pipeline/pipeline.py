@@ -19,7 +19,7 @@ from ..publisher import EventPublisher
 from ..rules import RuleEngine, TrackHistory
 from ..rules.base import TrackSnapshot
 from ..zone import GateSection, SectionMatcher
-from ..zone.geometry import foot_point, line_crossing_direction
+from ..zone.geometry import foot_point, line_crossing_direction, point_in_polygon
 from .visualizer import Visualizer
 
 log = logging.getLogger(__name__)
@@ -58,6 +58,7 @@ class Pipeline:
         output_video: Optional[str | Path] = None,
         max_frames: Optional[int] = None,
         show_window: bool = False,
+        start_sec: float = 0.0,
     ) -> dict:
         """영상 입력 → 추론 → 이벤트 발행.
 
@@ -66,6 +67,7 @@ class Pipeline:
             output_video: 시각화 영상 저장 경로
             max_frames: 디버깅용. None이면 끝까지
             show_window: 로컬 미리보기 창 띄울지
+            start_sec: 이 시각부터 처리. 고정 카메라가 안정화된 구간만 볼 때 사용.
 
         Returns:
             요약 통계 dict
@@ -80,6 +82,10 @@ class Pipeline:
         fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
         width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        if start_sec < 0:
+            raise ValueError("start_sec must be >= 0")
+        if start_sec:
+            cap.set(cv2.CAP_PROP_POS_MSEC, start_sec * 1000)
 
         writer = None
         if output_video:
@@ -90,7 +96,8 @@ class Pipeline:
 
         events_total = 0
         events_by_type: dict[str, int] = {}
-        frame_idx = 0
+        frame_idx = int(round(start_sec * fps))
+        processed_frames = 0
         t_start = time.time()
         recent_events_for_overlay: list = []
 
@@ -99,7 +106,7 @@ class Pipeline:
                 ok, frame = cap.read()
                 if not ok:
                     break
-                if max_frames is not None and frame_idx >= max_frames:
+                if max_frames is not None and processed_frames >= max_frames:
                     break
 
                 now_sec = frame_idx / fps
@@ -119,6 +126,11 @@ class Pipeline:
                     exit_direction = None
                     if prev is not None:
                         for s_id, section in self.sections.items():
+                            if not (
+                                point_in_polygon(prev, section.polygon)
+                                or point_in_polygon(foot, section.polygon)
+                            ):
+                                continue
                             entry_dir = line_crossing_direction(prev, foot, section.entry_line)
                             exit_dir = line_crossing_direction(prev, foot, section.exit_line)
                             if entry_dir != 0:
@@ -175,6 +187,7 @@ class Pipeline:
                     if frame_idx - fi <= 60
                 ]
                 frame_idx += 1
+                processed_frames += 1
         finally:
             cap.release()
             if writer:
@@ -185,9 +198,12 @@ class Pipeline:
 
         elapsed = time.time() - t_start
         return {
-            "frames": frame_idx,
+            "frames": processed_frames,
+            "processed_frames": processed_frames,
+            "end_frame_idx": frame_idx,
+            "start_sec": round(start_sec, 3),
             "elapsed_sec": round(elapsed, 2),
-            "fps": round(frame_idx / max(elapsed, 1e-6), 1),
+            "fps": round(processed_frames / max(elapsed, 1e-6), 1),
             "events_total": events_total,
             "events_by_type": events_by_type,
             "model_version": self._detector.model_version,

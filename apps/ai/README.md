@@ -26,6 +26,47 @@ python scripts/day10_full_pipeline.py test.mp4   # config 기반 전체
 
 결과는 `runs/dayN_output.mp4` 와 `runs/events_*.jsonl` 로 저장됨.
 
+### Gate passage smoke test
+
+샘플 영상이나 백엔드 없이 `gate_passage` 이벤트 발행만 빠르게 확인:
+
+```bash
+python scripts/smoke_gate_passage.py
+```
+
+확인할 것:
+- `runs/gate_passage_smoke.jsonl` 생성
+- `event_type` 이 `gate_passage`
+- `camera_id` 가 `camera_001`
+- `gate_section_id` 가 `gate_01`
+- `raw_meta.line_type` 이 `entry`, `exit` 두 건으로 기록
+
+이 테스트가 통과하면 AI 룰이 “게이트 통과 이벤트를 만들 수 있음”까지 확인된 것.
+실제 영상 검증은 그 다음 단계로 `day10_full_pipeline.py <video_path>` 를 사용.
+
+### Gate section 좌표 찍기
+
+실제 영상 첫 프레임에서 `polygon`, `entry_line`, `exit_line` 좌표를 클릭해서 JSON으로 출력:
+
+```bash
+python scripts/pick_gate_points.py ../../videos/gateguard_test_video.mov
+```
+
+조작:
+- `polygon`: 게이트 영역을 둘러싸는 점 3개 이상 클릭 후 `n`
+- `entry_line`: 선 양끝 2개 클릭 후 `n`
+- `exit_line`: 선 양끝 2개 클릭 후 `n`
+- `u`: 마지막 점 되돌리기
+- `c`: 현재 단계 점 지우기
+- `q`: 종료
+
+파일로 바로 저장:
+
+```bash
+python scripts/pick_gate_points.py ../../videos/gateguard_test_video.mov \
+  --output config/gate_sections.local.json
+```
+
 ## 구조 — 한 눈에
 
 ```

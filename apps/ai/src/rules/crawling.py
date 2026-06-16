@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from .base import Rule, TrackHistory
+from .base import Rule, SustainedEventDebouncer, TrackHistory
 from ..types import Event
 from ..zone import GateSection
 
@@ -27,10 +27,17 @@ class CrawlingRule(Rule):
         height_ratio_threshold: float = 0.55,   # 정상 높이 대비 비율
         min_frames_crawling: int = 8,
         baseline_window: int = 30,              # 이 트랙의 정상 높이 baseline
+        min_consecutive_frames: int = 3,        # 이만큼 연속 만족해야 1회 발화
+        reset_after_misses: int = 3,            # 이만큼 끊겨야 다음 기어가기를 새 이벤트로
     ):
         self._height_ratio_th = height_ratio_threshold
         self._min_frames = min_frames_crawling
         self._baseline_window = baseline_window
+        # 동일 기어가기가 연속 발화하는 것을 1건으로 묶음 (P0)
+        self._debounce = SustainedEventDebouncer(
+            min_consecutive_frames=min_consecutive_frames,
+            reset_after_misses=reset_after_misses,
+        )
 
     def evaluate(
         self,
@@ -39,6 +46,10 @@ class CrawlingRule(Rule):
         all_histories: dict[int, TrackHistory],
         camera_id: str,
     ) -> Optional[Event]:
+        candidate = self._detect(history, camera_id)
+        return self._debounce.feed(history.track_id, candidate)
+
+    def _detect(self, history: TrackHistory, camera_id: str) -> Optional[Event]:
         snaps = list(history.snapshots)
         if len(snaps) < max(self._min_frames, 15):
             return None

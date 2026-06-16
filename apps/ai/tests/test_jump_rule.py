@@ -24,10 +24,19 @@ def _rising_bboxes(n=10, *, y_top_start=300.0, y_top_step=20.0, y_bottom=400.0):
     return [(100.0, y_top_start - y_top_step * i, 160.0, y_bottom) for i in range(n)]
 
 
+def _fire(rule, hist, track_id=7):
+    """JumpRule 은 내부 디바운스로 min_consecutive_frames 연속 만족해야 발화.
+    같은 히스토리로 그만큼 평가해 실제 발행 Event 를 얻는다."""
+    event = None
+    for _ in range(3):
+        event = rule.evaluate(hist, {}, {track_id: hist}, "camera_001")
+    return event
+
+
 def test_jump_fires_on_fast_rise_and_height_variation():
     rule = JumpRule()
     hist = _history(_rising_bboxes())
-    event = rule.evaluate(hist, {}, {7: hist}, "camera_001")
+    event = _fire(rule, hist)
 
     assert event is not None
     assert event.event_type == "jump"

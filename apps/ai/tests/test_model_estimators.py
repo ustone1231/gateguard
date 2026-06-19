@@ -16,6 +16,7 @@ from src.rules.base import TrackSnapshot
 from src.eligibility_signals import EligibilitySignalEstimator
 from src.types import Track
 from scripts.smoke_model_gate_passage import validate_gate_passage_signals
+from scripts.smoke_model_gate_passage import line_jitter_candidate_count
 from scripts.smoke_model_gate_passage_batch import (
     summarize_batch,
     validate_batch_thresholds,
@@ -95,14 +96,23 @@ def test_model_gate_passage_smoke_validator_requires_model_signals():
     events = [
         {
             "event_type": "gate_passage",
+            "track_id": 3,
+            "gate_section_id": "gate_01",
             "signals": {
                 "face_age_estimate": 32.5,
                 "estimated_age_group": "adult",
                 "perceived_gender": "male",
                 "gender_confidence": 0.91,
             },
+            "raw_meta": {"line_type": "entry", "frame_idx": 10},
         },
-        {"event_type": "gate_passage", "signals": {"estimated_age_group": "adult"}},
+        {
+            "event_type": "gate_passage",
+            "track_id": 3,
+            "gate_section_id": "gate_01",
+            "signals": {"estimated_age_group": "adult"},
+            "raw_meta": {"line_type": "entry", "frame_idx": 11},
+        },
         {"event_type": "tailgating"},
     ]
 
@@ -113,6 +123,33 @@ def test_model_gate_passage_smoke_validator_requires_model_signals():
     assert summary["model_signal_gate_passage_count"] == 1
     assert summary["high_confidence_gender_gate_passage_count"] == 1
     assert summary["high_confidence_gender_threshold"] == 0.8
+    assert summary["line_jitter_candidate_gate_passage_count"] == 1
+    assert summary["line_jitter_review_frame_gap"] == 3
+
+
+def test_model_gate_passage_smoke_validator_ignores_separate_line_crossings():
+    gate_passages = [
+        {
+            "event_type": "gate_passage",
+            "track_id": 3,
+            "gate_section_id": "gate_01",
+            "raw_meta": {"line_type": "entry", "frame_idx": 10},
+        },
+        {
+            "event_type": "gate_passage",
+            "track_id": 3,
+            "gate_section_id": "gate_01",
+            "raw_meta": {"line_type": "exit", "frame_idx": 11},
+        },
+        {
+            "event_type": "gate_passage",
+            "track_id": 3,
+            "gate_section_id": "gate_01",
+            "raw_meta": {"line_type": "entry", "frame_idx": 20},
+        },
+    ]
+
+    assert line_jitter_candidate_count(gate_passages) == 0
 
 
 def test_model_gate_passage_batch_summary_rolls_up_samples():
@@ -123,6 +160,7 @@ def test_model_gate_passage_batch_summary_rolls_up_samples():
                 "gate_passage_count": 3,
                 "model_signal_gate_passage_count": 3,
                 "high_confidence_gender_gate_passage_count": 2,
+                "line_jitter_candidate_gate_passage_count": 0,
             },
         },
         {
@@ -131,6 +169,7 @@ def test_model_gate_passage_batch_summary_rolls_up_samples():
                 "gate_passage_count": 1,
                 "model_signal_gate_passage_count": 0,
                 "high_confidence_gender_gate_passage_count": 0,
+                "line_jitter_candidate_gate_passage_count": 1,
             },
         },
     ]
@@ -142,6 +181,7 @@ def test_model_gate_passage_batch_summary_rolls_up_samples():
     assert summary["gate_passage_count"] == 4
     assert summary["model_signal_gate_passage_count"] == 3
     assert summary["high_confidence_gender_gate_passage_count"] == 2
+    assert summary["line_jitter_candidate_gate_passage_count"] == 1
 
 
 def test_model_gate_passage_batch_thresholds_require_sample_coverage():

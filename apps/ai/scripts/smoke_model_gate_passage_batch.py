@@ -197,6 +197,10 @@ def summarize_batch(results: list[dict[str, Any]]) -> dict[str, Any]:
             result["summary"]["high_confidence_gender_gate_passage_count"]
             for result in results
         ),
+        "line_jitter_candidate_gate_passage_count": sum(
+            result["summary"]["line_jitter_candidate_gate_passage_count"]
+            for result in results
+        ),
     }
 
 

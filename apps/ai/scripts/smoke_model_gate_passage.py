@@ -31,6 +31,7 @@ REQUIRED_SIGNAL_FIELDS = (
     "gender_confidence",
 )
 HIGH_CONFIDENCE_GENDER_THRESHOLD = 0.80
+LINE_JITTER_REVIEW_FRAME_GAP = 3
 
 
 def main() -> None:
@@ -144,8 +145,41 @@ def validate_gate_passage_signals(events: list[dict[str, Any]]) -> dict[str, Any
         "model_signal_gate_passage_count": len(model_signal_events),
         "high_confidence_gender_gate_passage_count": len(high_confidence_gender_events),
         "high_confidence_gender_threshold": HIGH_CONFIDENCE_GENDER_THRESHOLD,
+        "line_jitter_candidate_gate_passage_count": line_jitter_candidate_count(
+            gate_passages,
+            max_frame_gap=LINE_JITTER_REVIEW_FRAME_GAP,
+        ),
+        "line_jitter_review_frame_gap": LINE_JITTER_REVIEW_FRAME_GAP,
         "required_signal_fields": list(REQUIRED_SIGNAL_FIELDS),
     }
+
+
+def line_jitter_candidate_count(
+    gate_passages: list[dict[str, Any]],
+    max_frame_gap: int = LINE_JITTER_REVIEW_FRAME_GAP,
+) -> int:
+    previous_by_key: dict[tuple[Any, Any, Any], int] = {}
+    candidates = 0
+    for event in sorted(gate_passages, key=_event_frame_idx):
+        raw_meta = event.get("raw_meta") or {}
+        frame_idx = raw_meta.get("frame_idx")
+        if not isinstance(frame_idx, int):
+            continue
+        key = (
+            event.get("track_id"),
+            event.get("gate_section_id"),
+            raw_meta.get("line_type"),
+        )
+        previous = previous_by_key.get(key)
+        if previous is not None and 0 <= frame_idx - previous <= max_frame_gap:
+            candidates += 1
+        previous_by_key[key] = frame_idx
+    return candidates
+
+
+def _event_frame_idx(event: dict[str, Any]) -> int:
+    frame_idx = (event.get("raw_meta") or {}).get("frame_idx")
+    return frame_idx if isinstance(frame_idx, int) else 10**12
 
 
 if __name__ == "__main__":

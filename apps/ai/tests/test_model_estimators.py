@@ -308,3 +308,25 @@ def test_model_gate_passage_batch_manifest_preflight_rejects_bad_samples():
                 }
             ]
         )
+    with pytest.raises(SystemExit):
+        validate_manifest_samples(
+            [
+                {
+                    "name": "bad_output_path",
+                    "video": "sample.mov",
+                    "sections": "sample.json",
+                    "output": "../outside.jsonl",
+                }
+            ]
+        )
+    with pytest.raises(SystemExit):
+        validate_manifest_samples(
+            [
+                {
+                    "name": "absolute_output_path",
+                    "video": "sample.mov",
+                    "sections": "sample.json",
+                    "output": "/tmp/outside.jsonl",
+                }
+            ]
+        )

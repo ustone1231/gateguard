@@ -170,6 +170,9 @@ def validate_manifest_samples(
             raise SystemExit(f"sample {name} requires max_frames >= 1")
         if _int_field(sample, "min_signal_events", 1) < 1:
             raise SystemExit(f"sample {name} requires min_signal_events >= 1")
+        output = sample.get("output")
+        if output:
+            validate_output_path(str(output), sample_name=name)
 
         if check_paths:
             if not Path(video).exists():
@@ -193,6 +196,16 @@ def _int_field(sample: dict[str, Any], field: str, default: int) -> int:
         return int(sample.get(field, default))
     except (TypeError, ValueError) as exc:
         raise SystemExit(f"sample {sample['name']} requires integer {field}") from exc
+
+
+def validate_output_path(output: str, sample_name: str = "sample") -> None:
+    output_path = Path(output)
+    if output_path.is_absolute():
+        raise SystemExit(f"sample {sample_name} output must be a relative path: {output}")
+    if ".." in output_path.parts:
+        raise SystemExit(f"sample {sample_name} output must not contain '..': {output}")
+    if output_path.name in {"", ".", ".."}:
+        raise SystemExit(f"sample {sample_name} output must include a file name: {output}")
 
 
 def sample_to_args(sample: dict[str, Any], defaults: argparse.Namespace) -> SimpleNamespace:

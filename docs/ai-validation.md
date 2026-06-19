@@ -152,6 +152,7 @@ python scripts/smoke_model_gate_passage_batch.py \
 - `start_sec`: 검증 시작 시각
 - `max_frames`: 처리할 프레임 수
 - `min_signal_events`: 최소 모델 signals 포함 `gate_passage` 수
+- `output`: 선택 필드. 지정할 경우 상대 경로만 허용하며 `..`는 사용할 수 없다.
 
 ## 샘플 수집 체크리스트
 

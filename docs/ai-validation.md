@@ -147,6 +147,8 @@ python scripts/smoke_model_gate_passage_batch.py \
 5. 모델 runtime 의존성(`mivolo`, `transformers`, `accelerate`)을 인프라 이미지에
    넣을지 별도 AI worker venv로 둘지 결정
 
+샘플 확보와 운영 enable 검증은 GitHub issue #38에서 추적한다.
+
 ## 품질 기준
 
 MVP/발표에서 쓸 표현:

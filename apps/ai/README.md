@@ -44,6 +44,27 @@ python scripts/smoke_gate_passage.py
 이 테스트가 통과하면 AI 룰이 “게이트 통과 이벤트를 만들 수 있음”까지 확인된 것.
 실제 영상 검증은 그 다음 단계로 `day10_full_pipeline.py <video_path>` 를 사용.
 
+### Model-backed gate passage smoke test
+
+실제 영상에서 `age_estimator`를 켠 뒤, 발행된 `gate_passage` 이벤트에
+모델 기반 `signals`가 붙는지 자동으로 확인:
+
+```bash
+python scripts/smoke_model_gate_passage.py ../../videos/gateguard_test_video.mov \
+  --sections config/gate_sections.local.json \
+  --start-sec 11.5 \
+  --max-frames 90
+```
+
+확인할 것:
+- `summary.model_signal_gate_passage_count >= 1`
+- JSONL 이벤트의 `signals.face_age_estimate`, `signals.perceived_gender`,
+  `signals.gender_confidence` 존재
+- 같은 track/section/line의 짧은 crossing jitter가 중복 이벤트로 남지 않는지 확인
+
+이 테스트는 HF MiVOLO v2와 YOLO를 함께 CPU에서 돌리므로 단위 테스트보다 느리다.
+모델 revision이나 gate section 좌표를 바꾼 뒤에는 반드시 다시 실행한다.
+
 ### Gate section 좌표 찍기
 
 실제 영상 첫 프레임에서 `polygon`, `entry_line`, `exit_line` 좌표를 클릭해서 JSON으로 출력:

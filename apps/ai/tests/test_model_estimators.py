@@ -15,6 +15,7 @@ from src.rules import TrackHistory
 from src.rules.base import TrackSnapshot
 from src.eligibility_signals import EligibilitySignalEstimator
 from src.types import Track
+from scripts.smoke_model_gate_passage import validate_gate_passage_signals
 
 
 def test_null_model_estimators_are_noops():
@@ -83,3 +84,25 @@ def test_eligibility_signals_prefer_model_hints_over_heuristics():
     assert signals.estimated_age_group == "senior"
     assert signals.perceived_gender == "female"
     assert signals.gender_confidence == 0.91
+
+
+def test_model_gate_passage_smoke_validator_requires_model_signals():
+    events = [
+        {
+            "event_type": "gate_passage",
+            "signals": {
+                "face_age_estimate": 32.5,
+                "estimated_age_group": "adult",
+                "perceived_gender": "male",
+                "gender_confidence": 0.91,
+            },
+        },
+        {"event_type": "gate_passage", "signals": {"estimated_age_group": "adult"}},
+        {"event_type": "tailgating"},
+    ]
+
+    summary = validate_gate_passage_signals(events)
+
+    assert summary["event_count"] == 3
+    assert summary["gate_passage_count"] == 2
+    assert summary["model_signal_gate_passage_count"] == 1

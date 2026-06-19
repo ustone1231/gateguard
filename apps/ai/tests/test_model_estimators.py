@@ -228,6 +228,24 @@ def test_model_gate_passage_batch_manifest_preflight_rejects_short_sample_set():
         validate_manifest_samples(samples, min_samples=3, min_passed_samples=3)
 
 
+def test_model_gate_passage_batch_manifest_preflight_rejects_duplicate_videos():
+    samples = [
+        {
+            "name": "local_gate_01_a",
+            "video": "../../videos/gateguard_test_video.mov",
+            "sections": "config/gate_sections.local.json",
+        },
+        {
+            "name": "local_gate_01_b",
+            "video": "../../videos/gateguard_test_video.mov",
+            "sections": "config/gate_sections.local.json",
+        },
+    ]
+
+    with pytest.raises(SystemExit):
+        validate_manifest_samples(samples)
+
+
 def test_model_gate_passage_batch_manifest_preflight_rejects_bad_samples():
     samples = [
         {

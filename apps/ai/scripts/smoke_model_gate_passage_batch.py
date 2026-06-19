@@ -118,6 +118,7 @@ def validate_manifest_samples(
         )
 
     seen_names = set()
+    seen_videos = set()
     for sample in samples:
         name = sample.get("name")
         if not name:
@@ -132,6 +133,14 @@ def validate_manifest_samples(
             raise SystemExit(f"sample {name} requires `video`")
         if not sections:
             raise SystemExit(f"sample {name} requires `sections`")
+        video_key = Path(video).expanduser()
+        if check_paths:
+            video_key = video_key.resolve()
+        else:
+            video_key = Path(str(video_key))
+        if video_key in seen_videos:
+            raise SystemExit(f"duplicate sample video: {video}")
+        seen_videos.add(video_key)
 
         if _float_field(sample, "start_sec", 0.0) < 0:
             raise SystemExit(f"sample {name} requires start_sec >= 0")

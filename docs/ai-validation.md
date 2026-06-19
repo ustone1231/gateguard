@@ -156,6 +156,8 @@ python scripts/smoke_model_gate_passage_batch.py \
 
 샘플 1개는 영상 파일 1개, gate section 좌표 파일 1개, manifest 항목 1개로
 구성한다. 영상과 local 좌표 파일은 git에 올리지 않는다.
+같은 영상 파일을 이름만 바꿔 여러 샘플로 등록하는 것은 운영 검증 샘플 수로
+인정하지 않으며, batch preflight에서 중복 영상으로 실패한다.
 
 1. 15~30초 길이로 게이트 통과가 1회 이상 보이는 영상을 준비한다.
 2. 기존 샘플과 다른 조건을 최소 하나 포함한다.

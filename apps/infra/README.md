@@ -40,6 +40,25 @@ apps/infra/
 | `AFC_SERVICE_TOKEN` | `backend` | `dev-afc-service-token-please-change-32` | Mock AFC → 백엔드 `/api/v1/fare-taps` 호출용 Bearer 토큰 |
 | `DATABASE_URL` | `backend` | `postgres://gateguard:gateguard@db:5432/gateguard` | 백엔드 → TimescaleDB 연결 |
 | `NEXT_PUBLIC_API_URL` | `frontend` | `http://localhost:8000` | 브라우저에서 백엔드 API 호출 시 사용 |
+| `MODEL_DIR` | `ai` | `/app/models` | AI 모델 weight/cache 위치. compose에서는 `./apps/ai/models` 볼륨에 연결 |
+| `HF_HOME` | `ai` | `/app/models/huggingface` | HuggingFace MiVOLO v2 cache 위치 |
+
+## AI 모델 런타임 빌드 옵션
+
+기본 AI 이미지는 `age_estimator.enabled=false`인 휴리스틱 경로를 기준으로 빌드한다.
+HF MiVOLO v2 smoke/demo를 컨테이너 안에서 돌릴 때만 optional MiVOLO runtime을
+명시적으로 설치한다.
+
+```bash
+INSTALL_MIVOLO_RUNTIME=1 \
+docker compose -f docker-compose.dev.yml build ai
+```
+
+기본값은 `INSTALL_MIVOLO_RUNTIME=0`이다. 즉, 일반 dev compose build에서는
+GitHub MiVOLO 패키지를 설치하지 않는다.
+
+모델 파일과 HuggingFace cache는 이미지에 굽지 않고 `./apps/ai/models` 볼륨에
+둔다. 이 디렉터리는 git에 올리지 않는다.
 
 ## 시작하기
 

@@ -12,14 +12,20 @@ services:
     build:
       context: ./apps/ai
       dockerfile: ../infra/Dockerfile.ai
+      args:
+        INSTALL_MIVOLO_RUNTIME: ${INSTALL_MIVOLO_RUNTIME:-0}
+        MIVOLO_REF: ${MIVOLO_REF:-main}
     image: gateguard-ai:dev
     container_name: gateguard-ai
     volumes:
       - ./apps/ai/config:/app/config:ro
+      - ./apps/ai/models:/app/models
       - ./videos:/videos
       - ./apps/ai/runs:/app/runs
     environment:
       - PYTHONUNBUFFERED=1
+      - MODEL_DIR=/app/models
+      - HF_HOME=/app/models/huggingface
       # AI HttpPublisher 우선순위: BACKEND_URL env > pipeline.json http_endpoint > localhost:8000
       # base URL 만 전달 — path(/api/v1/events)는 AI 코드에서 결합 (이슈 #3 합의)
       - BACKEND_URL=http://backend:8000

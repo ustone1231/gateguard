@@ -53,6 +53,8 @@ revision을 재현하게 하기 위한 설정이다.
 - HF remote code가 `mivolo` 패키지를 import하므로 optional runtime 설치가 필요하다.
 - 현재 wrapper는 별도 face crop 없이 ByteTrack person bbox를 body 입력으로 넣는다.
 - 이 출력은 백엔드 판정용 보조 신호이지 법적/개인 식별 신호가 아니다.
+- Docker 기본 AI 이미지는 MiVOLO runtime을 설치하지 않는다. 컨테이너에서
+  모델 smoke/demo를 돌릴 때는 `INSTALL_MIVOLO_RUNTIME=1`로 `ai` 이미지를 빌드한다.
 
 ## 필수 검증 명령
 
@@ -81,6 +83,11 @@ docker compose -f docker-compose.dev.yml config --quiet
 
 ```bash
 cd apps/ai
+python scripts/check_model_setup.py \
+  --detector \
+  --pose \
+  --device cpu
+
 python scripts/check_model_setup.py \
   --hf-mivolo-v2 \
   --device cpu \
@@ -210,7 +217,10 @@ python scripts/smoke_model_gate_passage_batch.py <local-manifest.json> \
 3. `gender_confidence >= 0.80` 조건이 과도한 오탐을 만들지 않는지 샘플 리뷰
 4. senior/child mismatch는 자동 확정이 아니라 review queue 우선순위 보조로 표시
 5. 모델 runtime 의존성(`mivolo`, `transformers`, `accelerate`)을 인프라 이미지에
-   넣을지 별도 AI worker venv로 둘지 결정
+   명시적으로 포함한 이미지로 검증
+   - compose build arg: `INSTALL_MIVOLO_RUNTIME=1`
+   - model/cache volume: `./apps/ai/models:/app/models`
+   - HuggingFace cache: `HF_HOME=/app/models/huggingface`
 
 샘플 확보와 운영 enable 검증은 GitHub issue #38에서 추적한다.
 

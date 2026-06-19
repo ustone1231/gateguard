@@ -4,9 +4,13 @@
 
 FROM pytorch/pytorch:2.5.1-cuda12.1-cudnn9-runtime
 
+ARG INSTALL_MIVOLO_RUNTIME=0
+ARG MIVOLO_REF=main
+
 # 시스템 의존성 (opencv 동작에 필요)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
+    git \
     libgl1 \
     libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
@@ -16,11 +20,19 @@ WORKDIR /app
 # 의존성 캐싱 — requirements.txt 먼저 복사
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+RUN if [ "$INSTALL_MIVOLO_RUNTIME" = "1" ]; then \
+      pip install --no-cache-dir "setuptools<81" && \
+      pip install --no-cache-dir --no-build-isolation \
+        "git+https://github.com/WildChlamydia/MiVOLO.git@${MIVOLO_REF}"; \
+    fi
 
 # 소스 코드
 COPY . .
 
 ENV PYTHONUNBUFFERED=1
+ENV MODEL_DIR=/app/models
+ENV HF_HOME=/app/models/huggingface
+ENV YOLO_CONFIG_DIR=/tmp/Ultralytics
 
 # 기본 실행 — day10 풀 파이프라인
 CMD ["python", "scripts/day10_full_pipeline.py", "/videos/input.mp4"]

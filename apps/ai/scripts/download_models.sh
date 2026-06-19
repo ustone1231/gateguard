@@ -2,6 +2,7 @@
 set -euo pipefail
 
 MODEL_DIR="${MODEL_DIR:-models}"
+DETECTOR_WEIGHTS="${DETECTOR_WEIGHTS:-yolo11n.pt}"
 POSE_WEIGHTS="${POSE_WEIGHTS:-yolo11n-pose.pt}"
 FACE_PERSON_WEIGHTS="${FACE_PERSON_WEIGHTS:-yolov8x_person_face.pt}"
 PYTHON_BIN="${PYTHON:-python3}"
@@ -9,6 +10,34 @@ PYTHON_BIN="${PYTHON:-python3}"
 mkdir -p "$MODEL_DIR"
 
 echo "[models] directory: $MODEL_DIR"
+
+"$PYTHON_BIN" - <<'PY'
+import os
+from pathlib import Path
+
+model_dir = Path(os.environ.get("MODEL_DIR", "models"))
+detector_weights = os.environ.get("DETECTOR_WEIGHTS", "yolo11n.pt")
+target = model_dir / detector_weights
+
+if target.exists():
+    print(f"[detector] already exists: {target}")
+else:
+    print(f"[detector] downloading via ultralytics: {detector_weights}")
+    from ultralytics import YOLO
+
+    # Ultralytics downloads known model names on first use.
+    model = YOLO(detector_weights)
+    downloaded = Path(detector_weights)
+    if downloaded.exists() and downloaded.resolve() != target.resolve():
+        downloaded.replace(target)
+    elif not target.exists():
+        ckpt_path = Path(getattr(model, "ckpt_path", detector_weights))
+        if ckpt_path.exists():
+            ckpt_path.replace(target)
+    if not target.exists():
+        raise SystemExit(f"[detector] failed to materialize {target}")
+    print(f"[detector] ready: {target}")
+PY
 
 "$PYTHON_BIN" - <<'PY'
 import os

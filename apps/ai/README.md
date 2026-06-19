@@ -169,7 +169,7 @@ HF MiVOLO v2 같은 실제 모델을 켜면 모델이 반환한 `perceived_gende
 cd apps/ai
 pip install -r requirements.txt
 bash scripts/download_models.sh
-python scripts/check_model_setup.py --pose
+python scripts/check_model_setup.py --detector --pose
 ```
 
 나이/성별 추정의 우선 후보는 HuggingFace MiVOLO v2다. 원본 `.pth.tar`
@@ -181,6 +181,13 @@ python scripts/check_model_setup.py --pose
 pip install "setuptools<81"
 pip install --no-build-isolation git+https://github.com/WildChlamydia/MiVOLO.git@main
 python scripts/check_model_setup.py --hf-mivolo-v2
+```
+
+Docker compose에서 같은 smoke/demo 런타임을 만들 때는 optional build arg를 켠다.
+기본 dev 이미지는 이 패키지를 설치하지 않는다.
+
+```bash
+INSTALL_MIVOLO_RUNTIME=1 docker compose -f ../../docker-compose.dev.yml build ai
 ```
 
 주의:

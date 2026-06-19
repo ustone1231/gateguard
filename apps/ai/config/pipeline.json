@@ -1,6 +1,6 @@
 {
   "model": {
-    "weights": "yolo11n.pt",
+    "weights": "models/yolo11n.pt",
     "device": "auto",
     "conf_threshold": 0.4,
     "iou_threshold": 0.5,

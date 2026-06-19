@@ -17,11 +17,17 @@ from src.age_estimator import (
     MivoloAgeGenderEstimator,
     MivoloConfig,
 )
+from src.detector import YoloDetector
 from src.pose_estimator import UltralyticsPoseEstimator
 
 
 def main() -> None:
     args = parse_args()
+    if args.detector:
+        detector = YoloDetector(weights=args.detector_weights, device=args.device)
+        detector.warmup()
+        print(f"detector OK: {detector.model_version}")
+
     if args.pose:
         pose = UltralyticsPoseEstimator(weights=args.pose_weights, device=args.device)
         pose.warmup()
@@ -54,6 +60,8 @@ def main() -> None:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--device", default="cpu")
+    parser.add_argument("--detector", action="store_true")
+    parser.add_argument("--detector-weights", default="models/yolo11n.pt")
     parser.add_argument("--pose", action="store_true")
     parser.add_argument("--pose-weights", default="models/yolo11n-pose.pt")
     parser.add_argument("--mivolo", action="store_true")

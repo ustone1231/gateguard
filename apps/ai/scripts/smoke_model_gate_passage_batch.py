@@ -20,7 +20,23 @@ from scripts.smoke_model_gate_passage import run_smoke
 
 def main() -> None:
     args = parse_args()
-    manifest = load_manifest(Path(args.manifest))
+    manifest = load_manifest(
+        Path(args.manifest),
+        min_samples=args.min_samples,
+        min_passed_samples=args.min_passed_samples,
+        check_paths=True,
+    )
+    if args.preflight_only:
+        print(
+            "preflight:",
+            json.dumps(
+                {"sample_count": len(manifest["samples"]), "passed": True},
+                ensure_ascii=False,
+                sort_keys=True,
+            ),
+        )
+        return
+
     results = []
     failures = []
     for sample in manifest.get("samples", []):
@@ -53,22 +69,99 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--torch-dtype", default="float32")
     parser.add_argument("--min-samples", type=int, default=1)
     parser.add_argument("--min-passed-samples", type=int, default=1)
+    parser.add_argument(
+        "--preflight-only",
+        action="store_true",
+        help="Validate the manifest and referenced files without loading models.",
+    )
     return parser.parse_args()
 
 
-def load_manifest(path: Path) -> dict[str, Any]:
+def load_manifest(
+    path: Path,
+    min_samples: int = 1,
+    min_passed_samples: int = 1,
+    check_paths: bool = False,
+) -> dict[str, Any]:
     manifest = json.loads(path.read_text(encoding="utf-8"))
     samples = manifest.get("samples")
     if not isinstance(samples, list) or not samples:
         raise SystemExit("manifest must contain a non-empty `samples` array")
-    for sample in samples:
-        if not sample.get("name"):
-            raise SystemExit("each sample requires `name`")
-        if not sample.get("video"):
-            raise SystemExit(f"sample {sample['name']} requires `video`")
-        if not sample.get("sections"):
-            raise SystemExit(f"sample {sample['name']} requires `sections`")
+    validate_manifest_samples(
+        samples,
+        min_samples=min_samples,
+        min_passed_samples=min_passed_samples,
+        check_paths=check_paths,
+    )
     return manifest
+
+
+def validate_manifest_samples(
+    samples: list[dict[str, Any]],
+    min_samples: int = 1,
+    min_passed_samples: int = 1,
+    check_paths: bool = False,
+) -> None:
+    if min_samples < 1:
+        raise SystemExit("min_samples must be >= 1")
+    if min_passed_samples < 1:
+        raise SystemExit("min_passed_samples must be >= 1")
+    if len(samples) < min_samples:
+        raise SystemExit(
+            "not enough samples for model gate passage smoke: "
+            f"required={min_samples}, actual={len(samples)}"
+        )
+    if len(samples) < min_passed_samples:
+        raise SystemExit(
+            "not enough samples to satisfy passing threshold: "
+            f"required={min_passed_samples}, actual={len(samples)}"
+        )
+
+    seen_names = set()
+    for sample in samples:
+        name = sample.get("name")
+        if not name:
+            raise SystemExit("each sample requires `name`")
+        if name in seen_names:
+            raise SystemExit(f"duplicate sample name: {name}")
+        seen_names.add(name)
+
+        video = sample.get("video")
+        sections = sample.get("sections")
+        if not video:
+            raise SystemExit(f"sample {name} requires `video`")
+        if not sections:
+            raise SystemExit(f"sample {name} requires `sections`")
+
+        if _float_field(sample, "start_sec", 0.0) < 0:
+            raise SystemExit(f"sample {name} requires start_sec >= 0")
+        if _int_field(sample, "max_frames", 120) < 1:
+            raise SystemExit(f"sample {name} requires max_frames >= 1")
+        if _int_field(sample, "min_signal_events", 1) < 1:
+            raise SystemExit(f"sample {name} requires min_signal_events >= 1")
+
+        if check_paths:
+            if not Path(video).exists():
+                raise SystemExit(f"sample {name} video not found: {video}")
+            if not Path(sections).exists():
+                raise SystemExit(f"sample {name} sections config not found: {sections}")
+            config = sample.get("config")
+            if config and not Path(config).exists():
+                raise SystemExit(f"sample {name} pipeline config not found: {config}")
+
+
+def _float_field(sample: dict[str, Any], field: str, default: float) -> float:
+    try:
+        return float(sample.get(field, default))
+    except (TypeError, ValueError) as exc:
+        raise SystemExit(f"sample {sample['name']} requires numeric {field}") from exc
+
+
+def _int_field(sample: dict[str, Any], field: str, default: int) -> int:
+    try:
+        return int(sample.get(field, default))
+    except (TypeError, ValueError) as exc:
+        raise SystemExit(f"sample {sample['name']} requires integer {field}") from exc
 
 
 def sample_to_args(sample: dict[str, Any], defaults: argparse.Namespace) -> SimpleNamespace:

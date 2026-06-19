@@ -16,7 +16,11 @@ from src.rules.base import TrackSnapshot
 from src.eligibility_signals import EligibilitySignalEstimator
 from src.types import Track
 from scripts.smoke_model_gate_passage import validate_gate_passage_signals
-from scripts.smoke_model_gate_passage_batch import summarize_batch, validate_batch_thresholds
+from scripts.smoke_model_gate_passage_batch import (
+    summarize_batch,
+    validate_batch_thresholds,
+    validate_manifest_samples,
+)
 
 
 def test_null_model_estimators_are_noops():
@@ -152,3 +156,50 @@ def test_model_gate_passage_batch_thresholds_require_sample_coverage():
     validate_batch_thresholds(summary, min_samples=1, min_passed_samples=1)
     with pytest.raises(SystemExit):
         validate_batch_thresholds(summary, min_samples=3, min_passed_samples=3)
+
+
+def test_model_gate_passage_batch_manifest_preflight_rejects_short_sample_set():
+    samples = [
+        {
+            "name": "local_gate_01",
+            "video": "../../videos/gateguard_test_video.mov",
+            "sections": "config/gate_sections.local.json",
+        }
+    ]
+
+    validate_manifest_samples(samples, min_samples=1, min_passed_samples=1)
+    with pytest.raises(SystemExit):
+        validate_manifest_samples(samples, min_samples=3, min_passed_samples=3)
+
+
+def test_model_gate_passage_batch_manifest_preflight_rejects_bad_samples():
+    samples = [
+        {
+            "name": "duplicate",
+            "video": "sample.mov",
+            "sections": "sample.local.json",
+        },
+        {
+            "name": "duplicate",
+            "video": "sample-2.mov",
+            "sections": "sample-2.local.json",
+        },
+    ]
+
+    with pytest.raises(SystemExit):
+        validate_manifest_samples(samples)
+    with pytest.raises(SystemExit):
+        validate_manifest_samples(
+            [{"name": "bad_frames", "video": "sample.mov", "sections": "sample.json", "max_frames": 0}]
+        )
+    with pytest.raises(SystemExit):
+        validate_manifest_samples(
+            [
+                {
+                    "name": "bad_start",
+                    "video": "sample.mov",
+                    "sections": "sample.json",
+                    "start_sec": "soon",
+                }
+            ]
+        )

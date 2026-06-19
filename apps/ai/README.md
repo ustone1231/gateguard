@@ -78,6 +78,12 @@ python scripts/smoke_model_gate_passage_batch.py \
 python scripts/smoke_model_gate_passage_batch.py \
   config/model_gate_passage_samples.example.json \
   --min-samples 3 \
+  --min-passed-samples 3 \
+  --preflight-only
+
+python scripts/smoke_model_gate_passage_batch.py \
+  config/model_gate_passage_samples.example.json \
+  --min-samples 3 \
   --min-passed-samples 3
 ```
 

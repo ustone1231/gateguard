@@ -126,6 +126,15 @@ python scripts/smoke_model_gate_passage_batch.py \
 현재 example manifest는 로컬 PoC 샘플 1개만 담고 있으므로 위 운영 기준
 명령은 추가 샘플을 넣기 전까지 실패하는 것이 정상이다.
 
+모델을 로딩하기 전에 manifest 구성과 파일 경로만 먼저 확인할 수 있다:
+
+```bash
+cd apps/ai
+python scripts/smoke_model_gate_passage_batch.py \
+  config/model_gate_passage_samples.example.json \
+  --preflight-only
+```
+
 샘플 manifest는 다음 필드를 가진다:
 
 - `name`: 샘플 이름
@@ -181,6 +190,11 @@ python scripts/smoke_model_gate_passage.py <video-path> \
 7. 3개 샘플 manifest로 운영 enable 후보 검증을 돌린다.
 
 ```bash
+python scripts/smoke_model_gate_passage_batch.py <local-manifest.json> \
+  --min-samples 3 \
+  --min-passed-samples 3 \
+  --preflight-only
+
 python scripts/smoke_model_gate_passage_batch.py <local-manifest.json> \
   --min-samples 3 \
   --min-passed-samples 3

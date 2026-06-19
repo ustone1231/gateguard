@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from src.eligibility_signals import EligibilitySignalConfig, EligibilitySignalEstimator
 from src.rules import GatePassageRule, TrackHistory
 from src.rules.base import TrackSnapshot
 
@@ -106,3 +107,44 @@ def test_entry_and_exit_crossings_can_both_emit_for_same_track():
     assert first.raw_meta["line_type"] == "exit"
     assert second is not None
     assert second.raw_meta["line_type"] == "entry"
+
+
+def test_gate_passage_attaches_v022_eligibility_signals():
+    estimator = EligibilitySignalEstimator(
+        EligibilitySignalConfig(
+            slow_speed_px_per_sec=50.0,
+            fast_speed_px_per_sec=150.0,
+            child_bbox_height_px=60.0,
+            adult_bbox_height_px=120.0,
+        )
+    )
+    rule = GatePassageRule(eligibility_estimator=estimator)
+    history = TrackHistory(track_id=7)
+    history.push(
+        TrackSnapshot(
+            frame_idx=1,
+            timestamp_sec=0.0,
+            bbox=(10, 10, 40, 170),
+            confidence=0.9,
+            section_id="gate_01",
+        )
+    )
+    history.push(
+        TrackSnapshot(
+            frame_idx=12,
+            timestamp_sec=1.0,
+            bbox=(220, 10, 250, 170),
+            confidence=0.91,
+            crossed_entry="gate_01",
+            crossed_entry_direction=1,
+        )
+    )
+
+    event = rule.evaluate(history, {}, {7: history}, "camera_001")
+
+    assert event is not None
+    assert event.signals is not None
+    assert event.signals.child_probability is not None
+    assert event.signals.estimated_age_group == "adult"
+    assert event.signals.perceived_gender == "unknown"
+    assert event.signals.gender_confidence is None

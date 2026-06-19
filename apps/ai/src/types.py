@@ -1,6 +1,6 @@
 """공통 데이터 타입.
 
-packages/schema/events/event.schema.json v0.2.1 와 1:1 매칭.
+packages/schema/events/event.schema.json v0.2.2 와 1:1 매칭.
 백엔드 POST /api/v1/events 요청 본문이 Event 인스턴스를 그대로 직렬화한 형태.
 
 발행자 책임:
@@ -24,6 +24,8 @@ Reliability = Literal["low", "mid", "high"]
 Severity = Literal["info", "warning", "critical"]
 CardCategory = Literal["regular", "senior", "child", "disabled", "national_merit"]
 AssistiveDeviceType = Literal["cane", "walker", "wheelchair"]
+Gender = Literal["male", "female", "unknown"]
+AgeGroup = Literal["child", "youth", "adult", "senior", "unknown"]
 
 
 @dataclass
@@ -46,7 +48,7 @@ class Track:
 class Signals:
     """v0.2.0 신규. 다중 신호 분석 결과.
 
-    AI 의 gate_passage event 에 senior_classifier 결과를 첨부.
+    AI 의 gate_passage event 에 자격 일치 검증용 보조 신호를 첨부.
     백엔드가 fare_tap 매칭 후 misuse 판정 시 활용.
     """
     face_age_estimate: Optional[float] = None
@@ -55,6 +57,11 @@ class Signals:
     assistive_device_detected: Optional[bool] = None
     assistive_device_type: Optional[AssistiveDeviceType] = None  # v0.2.1 신규
     senior_probability: Optional[float] = None
+    child_probability: Optional[float] = None
+    estimated_age_group: Optional[AgeGroup] = None
+    age_group_confidence: Optional[float] = None
+    perceived_gender: Optional[Gender] = None
+    gender_confidence: Optional[float] = None
 
 
 @dataclass
@@ -67,16 +74,15 @@ class AfcMatch:
     card_id_hash: str
     card_category: CardCategory
     tap_timestamp: str
+    holder_gender: Gender = "unknown"
     time_delta_ms: Optional[int] = None
 
 
 @dataclass
 class Event:
-    """백엔드 POST /api/v1/events 페이로드와 동일 (schema v0.2.1).
+    """백엔드 POST /api/v1/events 페이로드와 동일 (schema v0.2.2).
 
-    v0.2.1: event_type enum 재정의 — AI 발행 (gate_passage/jump/crawling/tailgating/unpaid) +
-            백엔드 발행 (confirmed_unpaid/confirmed_misuse). source_event_id 추가 (백엔드 confirmed_* 가 원본 참조).
-            assistive_device_type 추가.
+    v0.2.2: 우대 자격 일치 검증용 signals 확장(child/gender)과 afc_match.holder_gender 추가.
     """
     event_type: str            # gate_passage | jump | crawling | tailgating | unpaid | confirmed_unpaid | confirmed_misuse
     gate_section_id: str       # gate_01 등

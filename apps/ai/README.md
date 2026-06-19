@@ -79,6 +79,7 @@ gateguard-ai/
 │   ├── detector/              # Detector ABC + YoloDetector
 │   ├── tracker/               # Tracker ABC + ByteTrackTracker
 │   ├── zone/                  # GateSection + geometry + matcher
+│   ├── eligibility_signals/    # v0.2.2 우대 자격 보조 신호(MVP 휴리스틱)
 │   ├── rules/                 # Rule ABC + 4종 + RuleEngine
 │   ├── publisher/             # EventPublisher ABC + File/Http
 │   └── pipeline/              # Pipeline + Visualizer + factory
@@ -93,9 +94,16 @@ gateguard-ai/
 | YOLO11n + ByteTrack baseline | `yolo_detector.py`, `bytetrack_tracker.py` |
 | gate_sections (polygon, entry/exit line) | `config/gate_sections.json` + `src/zone/section.py` |
 | 이벤트 페이로드 (event_type, gate_section_id, ...) | `src/types.py` Event |
+| gate_passage 우대 자격 보조 신호 | `src/eligibility_signals/` → `Event.signals` |
 | 4종 룰 + cooldown + confidence | `src/rules/` |
 | model_versions 추적 | `Detector.model_version` → `Event.raw_meta` |
 | POST /api/v1/events | `src/publisher/http_publisher.py` |
+
+### v0.2.2 eligibility signals
+
+`gate_passage` 이벤트는 백엔드의 우대카드 부정사용 매칭을 위해 `signals`를 첨부할 수 있다.
+현재 MVP 구현은 별도 모델 없이 track 속도와 bbox scale에서 약한 연령대 보조 신호만 만든다.
+성별은 실제 모델이 붙기 전까지 `perceived_gender="unknown"`으로 두며, 자동 확정 판단은 백엔드의 confidence 정책을 따른다.
 
 ## 백엔드 연동
 

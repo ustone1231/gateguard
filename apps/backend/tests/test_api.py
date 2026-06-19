@@ -25,7 +25,7 @@ def test_health() -> None:
     body = response.json()
     assert body["status"] == "ok"
     assert isinstance(body["uptime_sec"], int)
-    assert body["schema_version"] == "0.2.1"
+    assert body["schema_version"] == "0.2.2"
 
 
 def test_event_ingest_and_dedupe() -> None:

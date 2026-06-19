@@ -5,20 +5,28 @@
 """
 from __future__ import annotations
 
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from .base import Rule, TrackHistory, TrackSnapshot
 from ..types import Event
 from ..zone import GateSection
+
+if TYPE_CHECKING:
+    from ..eligibility_signals import EligibilitySignalEstimator
 
 
 class GatePassageRule(Rule):
     name = "gate_passage"
     event_type = "gate_passage"
 
-    def __init__(self, recent_window_frames: int = 3):
+    def __init__(
+        self,
+        recent_window_frames: int = 3,
+        eligibility_estimator: "EligibilitySignalEstimator | None" = None,
+    ):
         self._recent_window = recent_window_frames
         self._emitted: set[tuple[int, int, str, str]] = set()
+        self._eligibility_estimator = eligibility_estimator
 
     def evaluate(
         self,
@@ -29,14 +37,14 @@ class GatePassageRule(Rule):
     ) -> Optional[Event]:
         recent = list(history.snapshots)[-self._recent_window:]
         for snap in reversed(recent):
-            event = self._event_from_snapshot(history.track_id, snap, camera_id)
+            event = self._event_from_snapshot(history, snap, camera_id)
             if event is not None:
                 return event
         return None
 
     def _event_from_snapshot(
         self,
-        track_id: int,
+        history: TrackHistory,
         snap: TrackSnapshot,
         camera_id: str,
     ) -> Optional[Event]:
@@ -55,17 +63,23 @@ class GatePassageRule(Rule):
             ))
 
         for line_type, section_id, direction in crossings:
-            key = (track_id, snap.frame_idx, section_id, line_type)
+            key = (history.track_id, snap.frame_idx, section_id, line_type)
             if key in self._emitted:
                 continue
             self._emitted.add(key)
+            signals = (
+                self._eligibility_estimator.estimate(history, snap)
+                if self._eligibility_estimator is not None
+                else None
+            )
             return Event(
                 event_type=self.event_type,
                 gate_section_id=section_id,
                 camera_id=camera_id,
                 confidence=round(max(0.0, min(1.0, snap.confidence)), 3),
-                track_id=track_id,
+                track_id=history.track_id,
                 timestamp=Event.now_iso(),
+                signals=signals,
                 reliability="high",
                 severity="info",
                 raw_meta={

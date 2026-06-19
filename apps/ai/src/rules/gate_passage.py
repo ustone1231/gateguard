@@ -22,10 +22,13 @@ class GatePassageRule(Rule):
     def __init__(
         self,
         recent_window_frames: int = 3,
+        min_same_line_gap_frames: int = 3,
         eligibility_estimator: "EligibilitySignalEstimator | None" = None,
     ):
         self._recent_window = recent_window_frames
         self._emitted: set[tuple[int, int, str, str]] = set()
+        self._min_same_line_gap_frames = max(0, min_same_line_gap_frames)
+        self._last_emitted_line: dict[tuple[int, str, str], int] = {}
         self._eligibility_estimator = eligibility_estimator
 
     def evaluate(
@@ -66,7 +69,15 @@ class GatePassageRule(Rule):
             key = (history.track_id, snap.frame_idx, section_id, line_type)
             if key in self._emitted:
                 continue
+            line_key = (history.track_id, section_id, line_type)
+            last_frame = self._last_emitted_line.get(line_key)
+            if (
+                last_frame is not None
+                and snap.frame_idx - last_frame <= self._min_same_line_gap_frames
+            ):
+                continue
             self._emitted.add(key)
+            self._last_emitted_line[line_key] = snap.frame_idx
             signals = (
                 self._eligibility_estimator.estimate(history, snap)
                 if self._eligibility_estimator is not None

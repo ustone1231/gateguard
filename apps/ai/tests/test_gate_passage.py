@@ -78,6 +78,34 @@ def test_same_crossing_frame_is_not_emitted_twice():
     assert second is None
 
 
+def test_adjacent_same_line_jitter_is_suppressed():
+    rule = GatePassageRule(min_same_line_gap_frames=3)
+    history = TrackHistory(track_id=7)
+    history.push(
+        TrackSnapshot(
+            frame_idx=40,
+            timestamp_sec=1.33,
+            bbox=(10, 10, 30, 80),
+            crossed_entry="gate_01",
+            crossed_entry_direction=1,
+        )
+    )
+    first = rule.evaluate(history, {}, {7: history}, "camera_001")
+    history.push(
+        TrackSnapshot(
+            frame_idx=41,
+            timestamp_sec=1.36,
+            bbox=(10, 10, 30, 80),
+            crossed_entry="gate_01",
+            crossed_entry_direction=-1,
+        )
+    )
+    second = rule.evaluate(history, {}, {7: history}, "camera_001")
+
+    assert first is not None
+    assert second is None
+
+
 def test_entry_and_exit_crossings_can_both_emit_for_same_track():
     rule = GatePassageRule(recent_window_frames=5)
     history = TrackHistory(track_id=7)

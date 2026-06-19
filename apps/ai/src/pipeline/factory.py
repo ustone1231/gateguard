@@ -98,6 +98,7 @@ def build_from_config(
         )
         rules.append(GatePassageRule(
             recent_window_frames=rc.get("recent_window_frames", 3),
+            min_same_line_gap_frames=rc.get("min_same_line_gap_frames", 3),
             eligibility_estimator=eligibility_estimator,
         ))
         cooldown_by_type["gate_passage"] = rc.get("cooldown_seconds", 0.0)

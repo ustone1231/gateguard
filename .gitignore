@@ -43,6 +43,7 @@ yarn-error.log*
 checkpoints/
 runs/
 outputs/
+apps/ai/config/*.local.json
 
 # ─── Media (testing) ────────────────────────
 *.mp4

@@ -79,6 +79,8 @@ gateguard-ai/
 │   ├── detector/              # Detector ABC + YoloDetector
 │   ├── tracker/               # Tracker ABC + ByteTrackTracker
 │   ├── zone/                  # GateSection + geometry + matcher
+│   ├── pose_estimator/        # YOLO pose wrapper (optional model-backed signals)
+│   ├── age_estimator/         # MiVOLO wrapper (optional model-backed signals)
 │   ├── eligibility_signals/    # v0.2.2 우대 자격 보조 신호(MVP 휴리스틱)
 │   ├── rules/                 # Rule ABC + 4종 + RuleEngine
 │   ├── publisher/             # EventPublisher ABC + File/Http
@@ -94,6 +96,8 @@ gateguard-ai/
 | YOLO11n + ByteTrack baseline | `yolo_detector.py`, `bytetrack_tracker.py` |
 | gate_sections (polygon, entry/exit line) | `config/gate_sections.json` + `src/zone/section.py` |
 | 이벤트 페이로드 (event_type, gate_section_id, ...) | `src/types.py` Event |
+| pose 기반 보조 신호 | `src/pose_estimator/` |
+| 나이/성별 기반 보조 신호 | `src/age_estimator/` |
 | gate_passage 우대 자격 보조 신호 | `src/eligibility_signals/` → `Event.signals` |
 | 4종 룰 + cooldown + confidence | `src/rules/` |
 | model_versions 추적 | `Detector.model_version` → `Event.raw_meta` |
@@ -102,8 +106,33 @@ gateguard-ai/
 ### v0.2.2 eligibility signals
 
 `gate_passage` 이벤트는 백엔드의 우대카드 부정사용 매칭을 위해 `signals`를 첨부할 수 있다.
-현재 MVP 구현은 별도 모델 없이 track 속도와 bbox scale에서 약한 연령대 보조 신호만 만든다.
-성별은 실제 모델이 붙기 전까지 `perceived_gender="unknown"`으로 두며, 자동 확정 판단은 백엔드의 confidence 정책을 따른다.
+기본 설정은 모델 없이 track 속도와 bbox scale에서 약한 연령대 보조 신호만 만든다.
+`pose_estimator.enabled` 또는 `age_estimator.enabled`를 켜면 모델 결과를 우선 사용한다.
+성별은 MiVOLO 같은 실제 모델이 붙기 전까지 `perceived_gender="unknown"`으로 두며, 자동 확정 판단은 백엔드의 confidence 정책을 따른다.
+
+### Optional model setup
+
+모델 가중치는 git에 올리지 않는다. 필요한 파일은 `models/` 아래에 둔다.
+
+```bash
+cd apps/ai
+pip install -r requirements.txt
+bash scripts/download_models.sh
+python scripts/check_model_setup.py --pose
+```
+
+MiVOLO는 원본 패키지와 `.pth.tar` 체크포인트가 추가로 필요하다.
+
+```bash
+pip install "setuptools<81"
+pip install --no-build-isolation git+https://github.com/WildChlamydia/MiVOLO.git@main
+# upstream checkpoint를 models/mivolo_imbd.pth.tar 로 배치한 뒤
+python scripts/check_model_setup.py --mivolo
+```
+
+주의: 원본 MiVOLO 패키지는 자체 dependency로 `ultralytics==8.1.0`, `timm==0.8.13.dev0`를 요구한다.
+기본 AI 파이프라인 검증 환경과 섞기 전에 별도 venv 또는 constraints로 충돌을 확인해야 한다.
+모델 파일이 없으면 wrapper는 조용히 휴리스틱으로 속이지 않고 명시적으로 실패한다.
 
 ## 백엔드 연동
 

@@ -14,6 +14,8 @@ from typing import Optional
 import cv2
 
 from ..detector import Detector
+from ..age_estimator import AgeGenderEstimator, NullAgeGenderEstimator
+from ..pose_estimator import NullPoseEstimator, PoseEstimator
 from ..tracker import Tracker
 from ..publisher import EventPublisher
 from ..rules import RuleEngine, TrackHistory
@@ -35,6 +37,8 @@ class Pipeline:
         publisher: EventPublisher,
         camera_id: str,
         visualizer: Optional[Visualizer] = None,
+        pose_estimator: PoseEstimator | None = None,
+        age_gender_estimator: AgeGenderEstimator | None = None,
     ):
         self._detector = detector
         self._tracker = tracker
@@ -43,6 +47,8 @@ class Pipeline:
         self._publisher = publisher
         self._camera_id = camera_id
         self._visualizer = visualizer
+        self._pose_estimator = pose_estimator or NullPoseEstimator()
+        self._age_gender_estimator = age_gender_estimator or NullAgeGenderEstimator()
         # track_id -> TrackHistory
         self._histories: dict[int, TrackHistory] = {}
         # track_id -> 직전 발 위치 (line crossing 판정용)
@@ -73,6 +79,8 @@ class Pipeline:
             요약 통계 dict
         """
         self._detector.warmup()
+        self._pose_estimator.warmup()
+        self._age_gender_estimator.warmup()
         self._tracker.reset()
 
         cap = cv2.VideoCapture(source)
@@ -114,6 +122,8 @@ class Pipeline:
                 # 1. detect → track
                 detections = self._detector.detect(frame)
                 tracks = self._tracker.update(detections, frame_idx)
+                pose_estimates = self._pose_estimator.estimate(frame, tracks)
+                age_gender_estimates = self._age_gender_estimator.estimate(frame, tracks)
 
                 # 2. section match + line crossing + history 업데이트
                 for tr in tracks:
@@ -140,6 +150,8 @@ class Pipeline:
                                 crossed_exit = s_id
                                 exit_direction = exit_dir
                     self._prev_foot[tr.track_id] = foot
+                    pose = pose_estimates.get(tr.track_id)
+                    age_gender = age_gender_estimates.get(tr.track_id)
 
                     hist = self._histories.setdefault(
                         tr.track_id, TrackHistory(track_id=tr.track_id)
@@ -154,6 +166,11 @@ class Pipeline:
                         crossed_exit=crossed_exit,
                         crossed_entry_direction=entry_direction if crossed_entry else None,
                         crossed_exit_direction=exit_direction if crossed_exit else None,
+                        face_age_estimate=age_gender.age if age_gender else None,
+                        pose_senior_score=pose.senior_score if pose else None,
+                        perceived_gender=age_gender.perceived_gender if age_gender else None,
+                        gender_confidence=age_gender.gender_confidence if age_gender else None,
+                        age_group_confidence=age_gender.age_confidence if age_gender else None,
                     ))
 
                 # 3. 룰 평가

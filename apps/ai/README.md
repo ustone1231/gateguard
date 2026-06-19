@@ -121,17 +121,33 @@ bash scripts/download_models.sh
 python scripts/check_model_setup.py --pose
 ```
 
-MiVOLO는 원본 패키지와 `.pth.tar` 체크포인트가 추가로 필요하다.
+나이/성별 추정의 우선 후보는 HuggingFace MiVOLO v2다. 원본 `.pth.tar`
+체크포인트 없이 공개 모델을 내려받아 smoke test까지 할 수 있다.
+단, HuggingFace remote code가 내부에서 `mivolo` 패키지를 import하므로
+런타임 패키지는 별도로 설치해야 한다.
 
 ```bash
 pip install "setuptools<81"
 pip install --no-build-isolation git+https://github.com/WildChlamydia/MiVOLO.git@main
+python scripts/check_model_setup.py --hf-mivolo-v2
+```
+
+주의:
+- `hf_mivolo_v2`는 `trust_remote_code=True`를 사용한다. 운영 배포 전에는
+  HuggingFace revision을 검토하고 `config/pipeline.json`의 `revision`에 고정한다.
+- 현재 wrapper는 별도 face detector crop 없이 ByteTrack person bbox를 body 입력으로 사용한다.
+  얼굴 crop 품질까지 높이려면 face/person detector 연결을 추가 검증해야 한다.
+- 원본 MiVOLO 패키지는 자체 dependency로 `ultralytics==8.1.0`,
+  `timm==0.8.13.dev0`를 요구한다. 기본 AI 파이프라인 검증 환경과 섞기 전에
+  별도 venv 또는 constraints로 충돌을 확인해야 한다.
+
+원본 MiVOLO `.pth.tar` 경로도 남겨둔다. 이 방식은 upstream checkpoint가 필요하다.
+
+```bash
 # upstream checkpoint를 models/mivolo_imbd.pth.tar 로 배치한 뒤
 python scripts/check_model_setup.py --mivolo
 ```
 
-주의: 원본 MiVOLO 패키지는 자체 dependency로 `ultralytics==8.1.0`, `timm==0.8.13.dev0`를 요구한다.
-기본 AI 파이프라인 검증 환경과 섞기 전에 별도 venv 또는 constraints로 충돌을 확인해야 한다.
 모델 파일이 없으면 wrapper는 조용히 휴리스틱으로 속이지 않고 명시적으로 실패한다.
 
 ## 백엔드 연동

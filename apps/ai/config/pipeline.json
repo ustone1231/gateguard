@@ -20,8 +20,11 @@
   },
   "age_estimator": {
     "enabled": false,
-    "type": "mivolo",
-    "_comment": "Optional MiVOLO wrapper. Requires external package + weights; see scripts/download_models.sh and README.",
+    "type": "hf_mivolo_v2",
+    "_comment": "Optional age/gender wrapper. hf_mivolo_v2 uses HuggingFace MiVOLO v2; mivolo uses upstream .pth.tar checkpoint.",
+    "model_id": "iitolstykh/mivolo_v2",
+    "revision": null,
+    "torch_dtype": "float32",
     "detector_weights": "models/yolov8x_person_face.pt",
     "checkpoint": "models/mivolo_imbd.pth.tar",
     "device": "cpu",
@@ -31,7 +34,7 @@
   },
   "eligibility_signals": {
     "enabled": true,
-    "_comment": "MVP heuristic signals for backend v0.2.2 matching. Gender stays unknown until a real model is integrated.",
+    "_comment": "MVP heuristic signals for backend v0.2.2 matching. Optional pose/age estimators override weak heuristics when enabled.",
     "slow_speed_px_per_sec": 80.0,
     "fast_speed_px_per_sec": 220.0,
     "child_bbox_height_px": 90.0,

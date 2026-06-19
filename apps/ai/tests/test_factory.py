@@ -6,8 +6,6 @@
 """
 from __future__ import annotations
 
-import pytest
-
 from src.pipeline.factory import (
     DEFAULT_BACKEND_BASE_URL,
     EVENTS_PATH,

@@ -4,6 +4,7 @@
   "gate_section_id": "gate_02",
   "card_id_hash": "sha256:ff998877665544332211aabbccddeeff00112233445566778899aabbccddee01",
   "card_category": "regular",
+  "holder_gender": "male",
   "timestamp": "2026-05-28T03:45:22.456789+00:00",
   "result": "denied",
   "raw_meta": {

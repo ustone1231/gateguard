@@ -54,12 +54,29 @@ MVP 기간 (v0.x) 에는 BREAKING도 자유롭게 가능. **v1.0 진입 후**부
 - `detection-strategy.md` §4~§7 의 원래 설계 (AI 행동 신호 + 백엔드 매칭 엔진 책임 분리) 와 정합
 - AI 는 영상만으로 판단 가능한 신호만 발행 (gate_passage, jump 등)
 - AFC 매칭 + misuse 판정은 백엔드 매칭 엔진 책임 (AI 에 fare_tap 안 옴)
-- `confirmed_misuse` 의 senior_probability 는 AI 의 senior_classifier 가 gate_passage event 의 signals 필드에 채움 → 백엔드가 card_category 매칭 후 결합 판정
+- `confirmed_misuse` 의 senior_probability 는 AI 의 eligibility_signals 가 gate_passage event 의 signals 필드에 채움 → 백엔드가 card_category 매칭 후 결합 판정
 
 **v0.2.0 → v0.2.1 호환성:**
 - v0.2.0 의 `misuse` 사용 코드 있다면 깨짐 (v0.2.0 은 짧게 존재했음, 실제 배포 없음)
 - AI 트랙 `types.py` 동기화 완료
 - 모든 examples 새 enum 으로 업데이트
+
+### v0.2.2 (2026-06-14) — 우대 자격 일치 검증 필드 확장
+
+**Event 스키마 변경 (BREAKING within v0.x):**
+- 🆕 `signals.child_probability` — 어린이 카드 자격 불일치 판단용 보조 신호
+- 🆕 `signals.estimated_age_group` / `signals.age_group_confidence` — UI/리뷰 보조용 연령대 추정
+- 🆕 `signals.perceived_gender` / `signals.gender_confidence` — 영상상 성별 추정. 확정 성별이 아니며 confidence threshold 필수
+- 🆕 `afc_match.holder_gender` — 매칭된 fare_tap 의 카드 등록 성별
+
+**FareTap 스키마 변경 (BREAKING within v0.x):**
+- 🆕 **holder_gender** (required) — AFC 가 카드 태그 시점에 제공하는 카드 등록 성별. enum: `male` / `female` / `unknown`
+
+**설계 결정 근거:**
+- 실제 AFC 태그 데이터에 카드 종류(`card_category`)와 등록 성별(`holder_gender`)이 함께 제공됨
+- AI 는 나이/성별을 확정하지 않고 보조 신호만 제공
+- 백엔드 매칭 엔진이 `gate_passage` + `fare_tap` 을 매칭한 뒤 연령 또는 성별 자격 불일치를 판단
+- confidence 낮은 성별/연령 추정은 자동 `confirmed_misuse` 금지, review queue 후보로만 처리
 
 ### v0.3.0 (예정)
 - `action_recognition` 결과 통합 (학습 기반 룰 추가 시)

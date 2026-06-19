@@ -13,7 +13,7 @@
 | **"MVP 에서 정확히 무엇을 개발하나? 무엇이 기존에서 바뀌었나?"** | [`mvp-features.md`](mvp-features.md) |
 | "트랙별로 무엇을 만들어야 하나?" | [`mvp-features.md`](mvp-features.md) §4 |
 | "5번째 룰 (우대카드 부정사용) 은 어떻게 감지?" | [`mvp-features.md`](mvp-features.md) §3-1 |
-| "스키마 어떻게 바뀌나? (events v2, fare_tap v1.1)" | [`mvp-features.md`](mvp-features.md) §5 |
+| "스키마 어떻게 바뀌나? (events/fare_tap v0.2.2)" | [`mvp-features.md`](mvp-features.md) §5 |
 | "Mock AFC / Fine-tuning / 학습 전략?" | [`mvp-features.md`](mvp-features.md) §6, §9 |
 | "트랙 간 합의가 필요한 결정 목록?" | [`mvp-features.md`](mvp-features.md) §12 |
 | **"트랙 간에 무슨 데이터를 어떻게 주고받나? (REST/WS/인증/에러)"** | [`api-contract.md`](api-contract.md) |
@@ -39,7 +39,7 @@
 무임승차 탐지가 단일 데이터 소스로는 풀리지 않는 이유 + CCTV (AI 행동 분석) 와 AFC (결제 트랜잭션) 를 합치는 전략 + 시나리오 판정 매트릭스 + MVP 시연 vs 실서비스 단계 + 윤리/법적 고려.
 
 ### 🛠 [mvp-features.md](mvp-features.md) — "무엇을 개발하고 무엇이 바뀌었나"
-MVP 기능 명세 + 기존 설계 대비 변경 사항 (4종 → 5종 룰, AFC 매칭, pose/age 모델 추가, 의심 큐 워크플로우) + 트랙별 (AI/CV, 백엔드, 프론트엔드, 인프라) 작업 정리 + 스키마 v0.2.0 변경 요약 + Mock AFC 전략 + Fine-tuning 전략 + 트랙 간 합의가 필요한 결정 목록.
+MVP 기능 명세 + 기존 설계 대비 변경 사항 (AI 행동 이벤트 + 백엔드 confirmed_* 판정, AFC 매칭, pose/age/eligibility_signals 모델 추가, 의심 큐 워크플로우) + 트랙별 (AI/CV, 백엔드, 프론트엔드, 인프라) 작업 정리 + 스키마 v0.2.2 변경 요약 + Mock AFC 전략 + Fine-tuning 전략 + 트랙 간 합의가 필요한 결정 목록.
 
 ### 📡 [api-contract.md](api-contract.md) — "트랙 간에 무엇을 어떻게 주고받나"
 REST endpoint 전체 명세 (이벤트 발행/조회, 의심 큐, 통계, 영상 클립, 인증, 헬스체크) + WebSocket 프로토콜 + JWT/서비스 토큰 인증 + 에러 응답 공통 형식 + 멱등성 / 재시도 정책 + 시퀀스 다이어그램 (이벤트 발행, AFC 매칭, misuse 의심 워크플로우) + Mock AFC 송신기 명세 + CORS / Rate Limiting / 시간 동기화.

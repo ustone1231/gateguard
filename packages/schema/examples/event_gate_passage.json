@@ -15,7 +15,12 @@
     "gait_senior_score": 0.12,
     "assistive_device_detected": false,
     "assistive_device_type": null,
-    "senior_probability": 0.11
+    "senior_probability": 0.11,
+    "child_probability": 0.02,
+    "estimated_age_group": "adult",
+    "age_group_confidence": 0.78,
+    "perceived_gender": "male",
+    "gender_confidence": 0.83
   },
   "raw_meta": {
     "crossed_line": "entry",

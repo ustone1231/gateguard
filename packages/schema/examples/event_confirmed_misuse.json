@@ -16,17 +16,24 @@
     "gait_senior_score": 0.12,
     "assistive_device_detected": false,
     "assistive_device_type": null,
-    "senior_probability": 0.11
+    "senior_probability": 0.11,
+    "child_probability": 0.02,
+    "estimated_age_group": "adult",
+    "age_group_confidence": 0.78,
+    "perceived_gender": "male",
+    "gender_confidence": 0.83
   },
   "afc_match": {
     "fare_tap_id": "tap_20260528034522_a1b2c3",
     "card_id_hash": "sha256:fe98765432109876543210fedcba9876543210abcdef0123456789abcdef0123",
     "card_category": "senior",
+    "holder_gender": "female",
     "tap_timestamp": "2026-05-28T03:45:22.301000+00:00",
     "time_delta_ms": -1
   },
   "raw_meta": {
-    "decision_rule": "afc_match.card_category in [senior, child] && signals.senior_probability < 0.20",
+    "decision_rule": "age_mismatch OR gender_mismatch with high confidence",
+    "misuse_reasons": ["senior_card_age_mismatch", "holder_gender_mismatch"],
     "min_reliability_required": "high"
   }
 }

@@ -103,6 +103,8 @@ CCTV 영상에서 다음 4종 부정 행위 + 정상 게이트 통과를 이벤�
   "event_type": "fare_tap",
   "gate_section_id": "gate_03",
   "card_id_hash": "sha256:ab123...",
+  "card_category": "senior",
+  "holder_gender": "female",
   "timestamp": "2026-05-24T14:23:15.847+09:00",
   "result": "approved",
   "raw_meta": {
@@ -113,6 +115,8 @@ CCTV 영상에서 다음 4종 부정 행위 + 정상 게이트 통과를 이벤�
 ```
 
 **개인정보 보호:** card_id 는 원본 저장 금지. 해시(sha256 + salt) 만 저장.
+
+**우대 자격 필드:** `card_category` 는 카드의 할인/면제 자격, `holder_gender` 는 AFC 가 제공하는 카드 등록 성별이다. 결제 수단은 `raw_meta.card_type` 에 둔다.
 
 ---
 
@@ -136,7 +140,8 @@ def on_gate_passage(passage_event):
     if matched_taps:
         # 가장 가까운 시간의 tap 을 매칭
         FareMatch.create(passage=passage_event, tap=matched_taps[0])
-        # 정상 통과로 분류 (별도 알림 X)
+        # 카드 자격과 AI 보조 신호가 불일치하면 confirmed_misuse,
+        # 아니면 정상 통과로 분류 (별도 알림 X)
     else:
         # 결제 없는 통과 = 무임승차 확정
         Alert.emit(
@@ -152,18 +157,21 @@ def on_gate_passage(passage_event):
 - 시스템 시간 동기화 오차 ±0.2 초 가정
 - 너무 좁으면 매칭 누락 (false unpaid), 너무 넓으면 다른 사람과 잘못 매칭
 
+**우대카드 부정사용 판단:** AI 는 나이/성별을 확정하지 않고 `signals.senior_probability`, `signals.child_probability`, `signals.perceived_gender`, `signals.gender_confidence` 만 제공한다. 백엔드는 매칭된 `fare_tap.card_category` / `fare_tap.holder_gender` 와 비교해 high confidence 불일치일 때만 `confirmed_misuse` 를 발행한다. confidence 낮은 경우는 자동 확정 금지.
+
 ---
 
 ## 7. 시나리오별 판정 매트릭스
 
-매칭 결과 + AI 이상 행동 발화 여부 조합으로 4가지 판정.
+매칭 결과 + AI 이상 행동 + 우대 자격 신호 조합으로 판정.
 
-| AI 이상 행동 | 결제 매칭 | 판정 | 운영자 처리 |
-|--------------|----------|------|------------|
-| ❌ 없음 | ✅ 있음 | 🟢 **정상** | 알림 없음 (로그만) |
-| ❌ 없음 | ❌ 없음 | 🔴 **무임승차 확정** | 즉시 알림, 클립 첨부 |
-| ✅ 있음 (점프 등) | ✅ 있음 | 🟡 **회색지대** | 의심 알림 — 결제 후 추가 인원? |
-| ✅ 있음 (점프 등) | ❌ 없음 | 🔴🔴 **명백한 무임승차** | 최고 우선순위 알림 |
+| AI 행동/자격 신호 | AFC 매칭 | 판정 | 운영자 처리 |
+|------------------|----------|------|------------|
+| 이상 행동 없음 + 자격 일치 | ✅ approved | 🟢 **정상** | 알림 없음 (로그만) |
+| 이상 행동 없음 | ❌ approved 없음 | 🔴 **무임승차 확정** (`confirmed_unpaid`) | 즉시 알림, 클립 첨부 |
+| jump/crawling/tailgating 등 | ✅ approved | 🟡 **회색지대** | 의심 알림 — 결제 후 추가 인원? |
+| jump/crawling/tailgating 등 | ❌ approved 없음 | 🔴🔴 **명백한 무임승차** | 최고 우선순위 알림 |
+| 우대 자격 high-confidence 불일치 | ✅ approved | 🔴 **우대카드 부정사용 의심** (`confirmed_misuse`) | 의심 큐 추가, 역무원 검토 |
 
 **회색지대 사례:**
 - "1명이 결제 + tailgating 발화" → 2명 중 1명만 결제 → 1명 무임

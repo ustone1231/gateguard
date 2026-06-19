@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://gateguard.app/schemas/fare-tap/v0.2.1",
+  "$id": "https://gateguard.app/schemas/fare-tap/v0.2.2",
   "title": "GateGuard FareTap",
-  "description": "AFC(Automatic Fare Collection) 시스템 (또는 MVP Mock AFC 송신기) 가 백엔드 POST /api/v1/fare-taps 로 발행하는 결제 트랜잭션. 백엔드 매칭 엔진이 동일 게이트의 AI Event (gate_passage 등) 와 ±1초 윈도로 매칭하여 confirmed_unpaid / confirmed_misuse 판정. v0.2.1 에서 fare_tap_id (멱등성 키) 추가.",
+  "description": "AFC(Automatic Fare Collection) 시스템 (또는 MVP Mock AFC 송신기) 가 백엔드 POST /api/v1/fare-taps 로 발행하는 결제 트랜잭션. 백엔드 매칭 엔진이 동일 게이트의 AI Event (gate_passage 등) 와 ±1초 윈도로 매칭하여 confirmed_unpaid / confirmed_misuse 판정. v0.2.2 에서 holder_gender (카드 등록 성별) 추가.",
   "type": "object",
   "required": [
     "fare_tap_id",
@@ -10,6 +10,7 @@
     "gate_section_id",
     "card_id_hash",
     "card_category",
+    "holder_gender",
     "timestamp",
     "result"
   ],
@@ -37,6 +38,11 @@
       "type": "string",
       "enum": ["regular", "senior", "child", "disabled", "national_merit"],
       "description": "v0.2.0 신규. 카드의 자격 종류 (할인/면제 기준). 결제 수단(T-money/캐시비 등)이 아님 — 그건 raw_meta.card_type. 백엔드 confirmed_misuse 판정의 매칭 키."
+    },
+    "holder_gender": {
+      "type": "string",
+      "enum": ["male", "female", "unknown"],
+      "description": "v0.2.2 신규. AFC 가 카드 태그 시점에 제공하는 카드 등록 성별. AI Event.signals.perceived_gender 와 비교해 성별 자격 불일치 후보를 만들 수 있다. 확정 처벌용 원본 성별이 아니라 매칭/리뷰 판단용 입력이며, 제공 불가 시 unknown 사용."
     },
     "timestamp": {
       "type": "string",

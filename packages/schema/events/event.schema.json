@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://gateguard.app/schemas/event/v0.2.1",
+  "$id": "https://gateguard.app/schemas/event/v0.2.2",
   "title": "GateGuard Event",
-  "description": "AI 파이프라인 또는 백엔드 매칭 엔진이 발행하는 이벤트. v0.2.1 에서 발행자별 event_type 명확화: AI 는 행동 신호 발행 (gate_passage / jump / crawling / tailgating / unpaid=우회), 백엔드는 AFC 매칭 후 confirmed_* 발행 (confirmed_unpaid / confirmed_misuse).",
+  "description": "AI 파이프라인 또는 백엔드 매칭 엔진이 발행하는 이벤트. v0.2.2 기준 AI 는 행동 신호와 자격 일치 검증용 보조 신호를 발행하고, 백엔드는 AFC 매칭 후 confirmed_* 를 발행한다.",
   "type": "object",
   "required": [
     "event_id",
@@ -30,7 +30,7 @@
         "confirmed_unpaid",
         "confirmed_misuse"
       ],
-      "description": "AI 발행: gate_passage (entry/exit line 통과 시), jump, crawling, tailgating, unpaid (=우회/역방향, 결제 없음 의미 아님). 백엔드 발행: confirmed_unpaid (gate_passage + fare_tap 매칭 실패), confirmed_misuse (gate_passage + fare_tap 매칭 + card_category=senior/child + senior_probability 낮음)."
+      "description": "AI 발행: gate_passage (entry/exit line 통과 시), jump, crawling, tailgating, unpaid (=우회/역방향, 결제 없음 의미 아님). 백엔드 발행: confirmed_unpaid (gate_passage + fare_tap 매칭 실패), confirmed_misuse (gate_passage + fare_tap 매칭 + 우대 자격 불일치)."
     },
     "gate_section_id": {
       "type": "string",
@@ -67,7 +67,7 @@
     },
     "signals": {
       "type": "object",
-      "description": "v0.2.0 신규. 다중 신호 분석 결과. AI 의 gate_passage event 가 senior_classifier 결과를 첨부. misuse 판정의 근거로 백엔드가 활용.",
+      "description": "v0.2.0 신규. 다중 신호 분석 결과. AI 의 gate_passage event 가 자격 일치 검증용 보조 신호를 첨부. AI 는 성별/연령을 확정하지 않고 perceived_* 및 confidence 로만 표현하며, 최종 misuse 판정은 백엔드가 AFC fare_tap 과 매칭 후 수행.",
       "properties": {
         "face_age_estimate": {
           "type": ["number", "null"],
@@ -100,7 +100,35 @@
           "type": ["number", "null"],
           "minimum": 0,
           "maximum": 1,
-          "description": "위 신호들의 가중 합. 백엔드 misuse 판정 기준."
+          "description": "위 신호들의 가중 합. senior 카드 자격 불일치 판단에 쓰는 보조 신호."
+        },
+        "child_probability": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 1,
+          "description": "어린이 카드 자격 불일치 판단에 쓰는 보조 신호. 모델 미구현 또는 신뢰도 부족 시 null."
+        },
+        "estimated_age_group": {
+          "type": ["string", "null"],
+          "enum": ["child", "youth", "adult", "senior", "unknown", null],
+          "description": "영상상 추정 연령대. UI/리뷰 보조용이며 단독 확정 판정 금지."
+        },
+        "age_group_confidence": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 1,
+          "description": "estimated_age_group 의 신뢰도. 낮으면 백엔드는 자동 confirmed_misuse 대신 review_needed 성격으로 처리."
+        },
+        "perceived_gender": {
+          "type": ["string", "null"],
+          "enum": ["male", "female", "unknown", null],
+          "description": "영상상 보이는 성별 추정. 민감/오탐 가능성이 있어 biological/legal gender 확정값이 아니며, 백엔드는 holder_gender 와 비교할 때 confidence threshold 를 반드시 적용."
+        },
+        "gender_confidence": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 1,
+          "description": "perceived_gender 의 신뢰도. 낮으면 성별 불일치 자동 확정 금지."
         }
       },
       "additionalProperties": false
@@ -134,6 +162,11 @@
           "enum": ["regular", "senior", "child", "disabled", "national_merit"],
           "description": "매칭된 카드의 자격 종류."
         },
+        "holder_gender": {
+          "type": "string",
+          "enum": ["male", "female", "unknown"],
+          "description": "v0.2.2 신규. AFC 가 제공한 카드 등록 성별. AI signals.perceived_gender 와 비교할 수 있으나, confidence 낮으면 자동 확정 금지."
+        },
         "tap_timestamp": {
           "type": "string",
           "format": "date-time",
@@ -144,7 +177,7 @@
           "description": "event.timestamp 와 fare_tap.timestamp 의 차이 (밀리초). 매칭 품질 지표."
         }
       },
-      "required": ["fare_tap_id", "card_id_hash", "card_category", "tap_timestamp"],
+      "required": ["fare_tap_id", "card_id_hash", "card_category", "holder_gender", "tap_timestamp"],
       "additionalProperties": false
     },
     "raw_meta": {

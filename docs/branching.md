@@ -166,7 +166,7 @@ apps/infra/     ← 인프라 트랙
 packages/schema/ ← 공통 스키마 (변경 시 모든 트랙 리더 호출)
 ```
 
-PR 만들 때 [`.github/CODEOWNERS`](.github/CODEOWNERS) 가 폴더별로 자동 리뷰어 지정 → 트랙 권한 자동 적용.
+PR 만들 때 [`.github/CODEOWNERS`](../.github/CODEOWNERS) 가 폴더별로 자동 리뷰어 지정 → 트랙 권한 자동 적용.
 
 ---
 

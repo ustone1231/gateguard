@@ -135,6 +135,57 @@ python scripts/smoke_model_gate_passage_batch.py \
 - `max_frames`: 처리할 프레임 수
 - `min_signal_events`: 최소 모델 signals 포함 `gate_passage` 수
 
+## 샘플 수집 체크리스트
+
+샘플 1개는 영상 파일 1개, gate section 좌표 파일 1개, manifest 항목 1개로
+구성한다. 영상과 local 좌표 파일은 git에 올리지 않는다.
+
+1. 15~30초 길이로 게이트 통과가 1회 이상 보이는 영상을 준비한다.
+2. 기존 샘플과 다른 조건을 최소 하나 포함한다.
+   - 다른 게이트 번호
+   - 다른 카메라 각도 또는 거리
+   - 다른 조명/시간대
+   - 다른 통과자 또는 통과 방향
+3. 통과 시점 전후 1~2초를 포함하도록 `start_sec`, `max_frames` 후보를 잡는다.
+4. 첫 프레임이나 통과 직전 프레임에서 gate 좌표를 찍는다.
+
+```bash
+cd apps/ai
+python scripts/pick_gate_points.py <video-path> \
+  --time-sec <timestamp> \
+  --output config/<sample-name>.local.json
+```
+
+5. local manifest에 항목을 추가한다.
+
+```json
+{
+  "name": "gate_02_side_light",
+  "video": "../../videos/gate_02_side_light.mov",
+  "sections": "config/gate_02_side_light.local.json",
+  "start_sec": 8.5,
+  "max_frames": 120,
+  "min_signal_events": 1
+}
+```
+
+6. 단일 샘플을 먼저 확인한다.
+
+```bash
+python scripts/smoke_model_gate_passage.py <video-path> \
+  --sections config/<sample-name>.local.json \
+  --start-sec <timestamp> \
+  --max-frames <frames>
+```
+
+7. 3개 샘플 manifest로 운영 enable 후보 검증을 돌린다.
+
+```bash
+python scripts/smoke_model_gate_passage_batch.py <local-manifest.json> \
+  --min-samples 3 \
+  --min-passed-samples 3
+```
+
 ## 운영 enable 기준
 
 `age_estimator.enabled=true`를 운영/통합 demo 기본값으로 바꾸기 전 조건:

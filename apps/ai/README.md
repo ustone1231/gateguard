@@ -81,6 +81,9 @@ python scripts/smoke_model_gate_passage_batch.py \
   --min-passed-samples 3
 ```
 
+새 샘플 촬영/좌표/manifest 작성 절차는
+[`docs/ai-validation.md`](../../docs/ai-validation.md)의 샘플 수집 체크리스트를 따른다.
+
 ### Gate section 좌표 찍기
 
 실제 영상 첫 프레임에서 `polygon`, `entry_line`, `exit_line` 좌표를 클릭해서 JSON으로 출력:

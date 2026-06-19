@@ -65,3 +65,31 @@ docker compose -f docker-compose.prod.yml up -d
 - **1-2주차**: 레지스트리 없음. `docker-compose.dev.yml` 로컬 build 만.
 - **3-4주차**: ghcr.io 사용 시작. main 머지 시 `:latest` 자동 push.
 - **5-6주차**: 본격 semver 태그 + prod compose 분리.
+
+## 인프라 후속 마일스톤 순서
+
+실제 MVP 후보 장비는 Windows + Docker Desktop WSL2 + RTX 3060 12GB 단일
+PC이다. 이 단계에서는 GPU scale-out, Kubernetes, 풀 모니터링 스택을 먼저
+붙이지 않고 Compose 기반 운영 안정화를 우선한다.
+
+후속 인프라 작업은 아래 순서로 분리한다.
+
+1. **dev/prod 환경 분리 안정화**
+   - secret/config 보간화
+   - backend `/api/v1/health` healthcheck 유지
+   - AI가 backend healthy 이후 시작하도록 compose 의존성 유지
+2. **staging/prod compose 분리**
+   - 로컬 build 중심의 dev compose와 image tag 중심의 staging/prod compose를 분리
+   - prod는 `.env.prod` 또는 배포 서버 secret 주입을 전제로 함
+3. **GHCR 이미지 레지스트리**
+   - 처음에는 `:latest` 또는 `:sha-xxxxx`로 시작
+   - 운영 배포가 안정화되면 semver tag pin으로 전환
+4. **nginx 리버스 프록시**
+   - backend/frontend 외부 노출 경로 정리
+   - TLS, CORS, 업로드/클립 다운로드 timeout 정책을 여기서 고정
+5. **Prometheus/Grafana 모니터링**
+   - `/api/v1/health`와 컨테이너 로그로 충분하지 않을 때 붙임
+   - GPU/VRAM, backend latency, DB 상태, clip storage 사용량을 우선 지표로 둠
+
+즉, 지금 단계에서 GHCR/nginx/Prometheus/Grafana를 한 PR에 모두 묶지 않는다.
+먼저 compose와 healthcheck가 안정된 뒤 하나씩 붙인다.

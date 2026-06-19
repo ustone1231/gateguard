@@ -74,3 +74,17 @@ drift를 함께 잡는다. replica/외부 DB 분리는 운영 병목이 확인�
 ## 릴리즈 절차
 
 [`docs/release.md`](../../docs/release.md) 참고.
+
+## 후속 인프라 확장 순서
+
+현재 MVP는 RTX 3060 12GB 단일 PC에서 Compose로 안정 운영하는 것이 목표다.
+따라서 아래 항목은 한 번에 붙이지 않고 순서대로 분리한다.
+
+1. dev/prod 환경변수와 secret 분리
+2. staging/prod compose 분리
+3. GHCR 이미지 레지스트리 연결
+4. nginx 리버스 프록시와 TLS
+5. Prometheus/Grafana 모니터링
+
+각 단계는 이전 단계의 healthcheck, CI, 로컬 검증이 안정된 뒤 별도 PR로
+진행한다.

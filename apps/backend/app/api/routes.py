@@ -25,7 +25,7 @@ from app.services.video_clips import (
 router = APIRouter()
 
 _APP_START = time.monotonic()
-_SCHEMA_VERSION = "0.2.1"
+_SCHEMA_VERSION = "0.2.2"
 
 
 def flush_matching_if_available() -> None:

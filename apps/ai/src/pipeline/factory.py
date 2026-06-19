@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 
 from ..detector import YoloDetector
+from ..eligibility_signals import EligibilitySignalConfig, EligibilitySignalEstimator
 from ..tracker import ByteTrackTracker
 from ..publisher import FilePublisher, HttpPublisher
 from ..rules import (
@@ -73,8 +74,20 @@ def build_from_config(
     cooldown_by_type: dict[str, float] = {}
     if rules_cfg.get("gate_passage", {}).get("enabled", True):
         rc = rules_cfg.get("gate_passage", {})
+        signal_cfg = cfg.get("eligibility_signals", {})
+        eligibility_estimator = EligibilitySignalEstimator(
+            EligibilitySignalConfig(
+                enabled=signal_cfg.get("enabled", True),
+                slow_speed_px_per_sec=signal_cfg.get("slow_speed_px_per_sec", 80.0),
+                fast_speed_px_per_sec=signal_cfg.get("fast_speed_px_per_sec", 220.0),
+                child_bbox_height_px=signal_cfg.get("child_bbox_height_px", 90.0),
+                adult_bbox_height_px=signal_cfg.get("adult_bbox_height_px", 150.0),
+                min_age_group_confidence=signal_cfg.get("min_age_group_confidence", 0.35),
+            )
+        )
         rules.append(GatePassageRule(
             recent_window_frames=rc.get("recent_window_frames", 3),
+            eligibility_estimator=eligibility_estimator,
         ))
         cooldown_by_type["gate_passage"] = rc.get("cooldown_seconds", 0.0)
     if rules_cfg.get("jump", {}).get("enabled", True):

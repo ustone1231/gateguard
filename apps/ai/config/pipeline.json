@@ -10,6 +10,15 @@
     "type": "bytetrack",
     "config": "bytetrack.yaml"
   },
+  "eligibility_signals": {
+    "enabled": true,
+    "_comment": "MVP heuristic signals for backend v0.2.2 matching. Gender stays unknown until a real model is integrated.",
+    "slow_speed_px_per_sec": 80.0,
+    "fast_speed_px_per_sec": 220.0,
+    "child_bbox_height_px": 90.0,
+    "adult_bbox_height_px": 150.0,
+    "min_age_group_confidence": 0.35
+  },
   "rules": {
     "gate_passage": {
       "enabled": true,

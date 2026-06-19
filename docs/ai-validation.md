@@ -128,7 +128,8 @@ cd apps/ai
 python scripts/smoke_model_gate_passage_batch.py \
   config/model_gate_passage_samples.example.json \
   --min-samples 3 \
-  --min-passed-samples 3
+  --min-passed-samples 3 \
+  --max-line-jitter-candidates 0
 ```
 
 현재 example manifest는 로컬 PoC 샘플 1개만 담고 있으므로 위 운영 기준
@@ -207,7 +208,8 @@ python scripts/smoke_model_gate_passage_batch.py <local-manifest.json> \
 
 python scripts/smoke_model_gate_passage_batch.py <local-manifest.json> \
   --min-samples 3 \
-  --min-passed-samples 3
+  --min-passed-samples 3 \
+  --max-line-jitter-candidates 0
 ```
 
 ## 운영 enable 기준
@@ -217,7 +219,8 @@ python scripts/smoke_model_gate_passage_batch.py <local-manifest.json> \
 1. 최소 3개 이상의 서로 다른 게이트/각도/조명 샘플에서
    `smoke_model_gate_passage_batch.py` 통과
 2. 정상 통과 케이스에서 line jitter 중복이 허용 범위인지 확인
-   - `batch_summary.line_jitter_candidate_gate_passage_count == 0` 기대
+   - `--max-line-jitter-candidates 0`으로
+     `batch_summary.line_jitter_candidate_gate_passage_count == 0` 강제
    - 0보다 크면 각 샘플 summary의 `line_jitter_candidate_refs`를 확인
 3. `gender_confidence >= 0.80` 조건이 과도한 오탐을 만들지 않는지 샘플 리뷰
    - `batch_summary.high_confidence_gender_gate_passage_count` 대상 이벤트를 JSONL에서 수동 확인

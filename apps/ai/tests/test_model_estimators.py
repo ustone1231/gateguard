@@ -207,11 +207,32 @@ def test_model_gate_passage_batch_thresholds_require_sample_coverage():
         "gate_passage_count": 3,
         "model_signal_gate_passage_count": 3,
         "high_confidence_gender_gate_passage_count": 3,
+        "line_jitter_candidate_gate_passage_count": 0,
     }
 
     validate_batch_thresholds(summary, min_samples=1, min_passed_samples=1)
     with pytest.raises(SystemExit):
         validate_batch_thresholds(summary, min_samples=3, min_passed_samples=3)
+
+
+def test_model_gate_passage_batch_thresholds_reject_line_jitter_candidates():
+    summary = {
+        "sample_count": 3,
+        "passed_count": 3,
+        "gate_passage_count": 6,
+        "model_signal_gate_passage_count": 6,
+        "high_confidence_gender_gate_passage_count": 4,
+        "line_jitter_candidate_gate_passage_count": 1,
+    }
+
+    with pytest.raises(SystemExit):
+        validate_batch_thresholds(summary, min_samples=3, min_passed_samples=3)
+    validate_batch_thresholds(
+        summary,
+        min_samples=3,
+        min_passed_samples=3,
+        max_line_jitter_candidates=1,
+    )
 
 
 def test_model_gate_passage_batch_manifest_preflight_rejects_short_sample_set():

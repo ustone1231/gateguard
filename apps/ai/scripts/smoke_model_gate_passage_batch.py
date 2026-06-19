@@ -60,7 +60,12 @@ def main() -> None:
     if failures:
         names = ", ".join(result["name"] for result in failures)
         raise SystemExit(f"model gate passage smoke failed for: {names}")
-    validate_batch_thresholds(summary, args.min_samples, args.min_passed_samples)
+    validate_batch_thresholds(
+        summary,
+        args.min_samples,
+        args.min_passed_samples,
+        max_line_jitter_candidates=args.max_line_jitter_candidates,
+    )
 
 
 def parse_args() -> argparse.Namespace:
@@ -72,6 +77,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--torch-dtype", default="float32")
     parser.add_argument("--min-samples", type=int, default=1)
     parser.add_argument("--min-passed-samples", type=int, default=1)
+    parser.add_argument(
+        "--max-line-jitter-candidates",
+        type=int,
+        default=0,
+        help=(
+            "Maximum allowed duplicate same-track/section/line gate_passage "
+            "candidates across the batch."
+        ),
+    )
     parser.add_argument(
         "--preflight-only",
         action="store_true",
@@ -225,7 +239,10 @@ def validate_batch_thresholds(
     summary: dict[str, Any],
     min_samples: int,
     min_passed_samples: int,
+    max_line_jitter_candidates: int = 0,
 ) -> None:
+    if max_line_jitter_candidates < 0:
+        raise SystemExit("max_line_jitter_candidates must be >= 0")
     if summary["sample_count"] < min_samples:
         raise SystemExit(
             "not enough samples for model gate passage smoke: "
@@ -235,6 +252,12 @@ def validate_batch_thresholds(
         raise SystemExit(
             "not enough passing samples for model gate passage smoke: "
             f"required={min_passed_samples}, actual={summary['passed_count']}"
+        )
+    line_jitter_candidates = summary["line_jitter_candidate_gate_passage_count"]
+    if line_jitter_candidates > max_line_jitter_candidates:
+        raise SystemExit(
+            "too many line jitter gate_passage candidates: "
+            f"allowed={max_line_jitter_candidates}, actual={line_jitter_candidates}"
         )
 
 

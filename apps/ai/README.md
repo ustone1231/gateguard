@@ -135,8 +135,9 @@ python scripts/check_model_setup.py --hf-mivolo-v2
 ```
 
 주의:
-- `hf_mivolo_v2`는 `trust_remote_code=True`를 사용한다. 운영 배포 전에는
-  HuggingFace revision을 검토하고 `config/pipeline.json`의 `revision`에 고정한다.
+- `hf_mivolo_v2`는 `trust_remote_code=True`를 사용한다. 현재
+  `config/pipeline.json`은 smoke 검증한 HuggingFace revision에 고정되어 있다.
+  revision을 바꾸면 model setup smoke와 실제 gate passage smoke를 다시 돌린다.
 - 현재 wrapper는 별도 face detector crop 없이 ByteTrack person bbox를 body 입력으로 사용한다.
   얼굴 crop 품질까지 높이려면 face/person detector 연결을 추가 검증해야 한다.
 - 원본 MiVOLO 패키지는 자체 dependency로 `ultralytics==8.1.0`,

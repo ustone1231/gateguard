@@ -144,8 +144,15 @@ def validate_gate_passage_signals(events: list[dict[str, Any]]) -> dict[str, Any
         "gate_passage_count": len(gate_passages),
         "model_signal_gate_passage_count": len(model_signal_events),
         "high_confidence_gender_gate_passage_count": len(high_confidence_gender_events),
+        "high_confidence_gender_event_refs": [
+            event_review_ref(event) for event in high_confidence_gender_events
+        ],
         "high_confidence_gender_threshold": HIGH_CONFIDENCE_GENDER_THRESHOLD,
         "line_jitter_candidate_gate_passage_count": line_jitter_candidate_count(
+            gate_passages,
+            max_frame_gap=LINE_JITTER_REVIEW_FRAME_GAP,
+        ),
+        "line_jitter_candidate_refs": line_jitter_candidate_refs(
             gate_passages,
             max_frame_gap=LINE_JITTER_REVIEW_FRAME_GAP,
         ),
@@ -158,8 +165,16 @@ def line_jitter_candidate_count(
     gate_passages: list[dict[str, Any]],
     max_frame_gap: int = LINE_JITTER_REVIEW_FRAME_GAP,
 ) -> int:
+    return len(line_jitter_candidate_refs(gate_passages, max_frame_gap=max_frame_gap))
+
+
+def line_jitter_candidate_refs(
+    gate_passages: list[dict[str, Any]],
+    max_frame_gap: int = LINE_JITTER_REVIEW_FRAME_GAP,
+) -> list[dict[str, Any]]:
     previous_by_key: dict[tuple[Any, Any, Any], int] = {}
-    candidates = 0
+    previous_event_by_key: dict[tuple[Any, Any, Any], dict[str, Any]] = {}
+    candidates = []
     for event in sorted(gate_passages, key=_event_frame_idx):
         raw_meta = event.get("raw_meta") or {}
         frame_idx = raw_meta.get("frame_idx")
@@ -172,9 +187,30 @@ def line_jitter_candidate_count(
         )
         previous = previous_by_key.get(key)
         if previous is not None and 0 <= frame_idx - previous <= max_frame_gap:
-            candidates += 1
+            candidates.append({
+                "frame_gap": frame_idx - previous,
+                "previous": event_review_ref(previous_event_by_key[key]),
+                "current": event_review_ref(event),
+            })
         previous_by_key[key] = frame_idx
+        previous_event_by_key[key] = event
     return candidates
+
+
+def event_review_ref(event: dict[str, Any]) -> dict[str, Any]:
+    raw_meta = event.get("raw_meta") or {}
+    signals = event.get("signals") or {}
+    return {
+        "event_id": event.get("event_id"),
+        "track_id": event.get("track_id"),
+        "gate_section_id": event.get("gate_section_id"),
+        "line_type": raw_meta.get("line_type"),
+        "frame_idx": raw_meta.get("frame_idx"),
+        "perceived_gender": signals.get("perceived_gender"),
+        "gender_confidence": signals.get("gender_confidence"),
+        "face_age_estimate": signals.get("face_age_estimate"),
+        "estimated_age_group": signals.get("estimated_age_group"),
+    }
 
 
 def _event_frame_idx(event: dict[str, Any]) -> int:

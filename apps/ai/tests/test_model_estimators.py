@@ -123,7 +123,23 @@ def test_model_gate_passage_smoke_validator_requires_model_signals():
     assert summary["model_signal_gate_passage_count"] == 1
     assert summary["high_confidence_gender_gate_passage_count"] == 1
     assert summary["high_confidence_gender_threshold"] == 0.8
+    assert summary["high_confidence_gender_event_refs"] == [
+        {
+            "event_id": None,
+            "track_id": 3,
+            "gate_section_id": "gate_01",
+            "line_type": "entry",
+            "frame_idx": 10,
+            "perceived_gender": "male",
+            "gender_confidence": 0.91,
+            "face_age_estimate": 32.5,
+            "estimated_age_group": "adult",
+        }
+    ]
     assert summary["line_jitter_candidate_gate_passage_count"] == 1
+    assert summary["line_jitter_candidate_refs"][0]["frame_gap"] == 1
+    assert summary["line_jitter_candidate_refs"][0]["previous"]["frame_idx"] == 10
+    assert summary["line_jitter_candidate_refs"][0]["current"]["frame_idx"] == 11
     assert summary["line_jitter_review_frame_gap"] == 3
 
 

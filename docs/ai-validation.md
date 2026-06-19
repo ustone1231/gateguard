@@ -216,8 +216,10 @@ python scripts/smoke_model_gate_passage_batch.py <local-manifest.json> \
    `smoke_model_gate_passage_batch.py` 통과
 2. 정상 통과 케이스에서 line jitter 중복이 허용 범위인지 확인
    - `batch_summary.line_jitter_candidate_gate_passage_count == 0` 기대
+   - 0보다 크면 각 샘플 summary의 `line_jitter_candidate_refs`를 확인
 3. `gender_confidence >= 0.80` 조건이 과도한 오탐을 만들지 않는지 샘플 리뷰
    - `batch_summary.high_confidence_gender_gate_passage_count` 대상 이벤트를 JSONL에서 수동 확인
+   - 각 샘플 summary의 `high_confidence_gender_event_refs`가 우선 확인 대상
 4. senior/child mismatch는 자동 확정이 아니라 review queue 우선순위 보조로 표시
 5. 모델 runtime 의존성(`mivolo`, `transformers`, `accelerate`)을 인프라 이미지에
    명시적으로 포함한 이미지로 검증

@@ -72,6 +72,15 @@ python scripts/smoke_model_gate_passage_batch.py \
   config/model_gate_passage_samples.example.json
 ```
 
+운영 enable 후보는 최소 3개 샘플을 강제:
+
+```bash
+python scripts/smoke_model_gate_passage_batch.py \
+  config/model_gate_passage_samples.example.json \
+  --min-samples 3 \
+  --min-passed-samples 3
+```
+
 ### Gate section 좌표 찍기
 
 실제 영상 첫 프레임에서 `polygon`, `entry_line`, `exit_line` 좌표를 클릭해서 JSON으로 출력:

@@ -41,6 +41,7 @@ def main() -> None:
     if failures:
         names = ", ".join(result["name"] for result in failures)
         raise SystemExit(f"model gate passage smoke failed for: {names}")
+    validate_batch_thresholds(summary, args.min_samples, args.min_passed_samples)
 
 
 def parse_args() -> argparse.Namespace:
@@ -50,6 +51,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output-dir", default="runs/model_gate_passage_samples")
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--torch-dtype", default="float32")
+    parser.add_argument("--min-samples", type=int, default=1)
+    parser.add_argument("--min-passed-samples", type=int, default=1)
     return parser.parse_args()
 
 
@@ -102,6 +105,23 @@ def summarize_batch(results: list[dict[str, Any]]) -> dict[str, Any]:
             for result in results
         ),
     }
+
+
+def validate_batch_thresholds(
+    summary: dict[str, Any],
+    min_samples: int,
+    min_passed_samples: int,
+) -> None:
+    if summary["sample_count"] < min_samples:
+        raise SystemExit(
+            "not enough samples for model gate passage smoke: "
+            f"required={min_samples}, actual={summary['sample_count']}"
+        )
+    if summary["passed_count"] < min_passed_samples:
+        raise SystemExit(
+            "not enough passing samples for model gate passage smoke: "
+            f"required={min_passed_samples}, actual={summary['passed_count']}"
+        )
 
 
 if __name__ == "__main__":

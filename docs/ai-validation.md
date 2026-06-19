@@ -113,6 +113,19 @@ python scripts/smoke_model_gate_passage_batch.py \
   config/model_gate_passage_samples.example.json
 ```
 
+운영 enable 후보 검증 시에는 최소 샘플 수를 명령에서 강제한다:
+
+```bash
+cd apps/ai
+python scripts/smoke_model_gate_passage_batch.py \
+  config/model_gate_passage_samples.example.json \
+  --min-samples 3 \
+  --min-passed-samples 3
+```
+
+현재 example manifest는 로컬 PoC 샘플 1개만 담고 있으므로 위 운영 기준
+명령은 추가 샘플을 넣기 전까지 실패하는 것이 정상이다.
+
 샘플 manifest는 다음 필드를 가진다:
 
 - `name`: 샘플 이름

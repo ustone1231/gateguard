@@ -16,7 +16,7 @@ from src.rules.base import TrackSnapshot
 from src.eligibility_signals import EligibilitySignalEstimator
 from src.types import Track
 from scripts.smoke_model_gate_passage import validate_gate_passage_signals
-from scripts.smoke_model_gate_passage_batch import summarize_batch
+from scripts.smoke_model_gate_passage_batch import summarize_batch, validate_batch_thresholds
 
 
 def test_null_model_estimators_are_noops():
@@ -138,3 +138,17 @@ def test_model_gate_passage_batch_summary_rolls_up_samples():
     assert summary["gate_passage_count"] == 4
     assert summary["model_signal_gate_passage_count"] == 3
     assert summary["high_confidence_gender_gate_passage_count"] == 2
+
+
+def test_model_gate_passage_batch_thresholds_require_sample_coverage():
+    summary = {
+        "sample_count": 1,
+        "passed_count": 1,
+        "gate_passage_count": 3,
+        "model_signal_gate_passage_count": 3,
+        "high_confidence_gender_gate_passage_count": 3,
+    }
+
+    validate_batch_thresholds(summary, min_samples=1, min_passed_samples=1)
+    with pytest.raises(SystemExit):
+        validate_batch_thresholds(summary, min_samples=3, min_passed_samples=3)

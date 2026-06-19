@@ -145,7 +145,7 @@ python scripts/smoke_model_gate_passage_batch.py \
 
 샘플 manifest는 다음 필드를 가진다:
 
-- `name`: 샘플 이름
+- `name`: 샘플 이름. 영문/숫자/`.`/`_`/`-`만 사용한다.
 - `video`: 영상 경로
 - `sections`: gate section config 경로
 - `start_sec`: 검증 시작 시각

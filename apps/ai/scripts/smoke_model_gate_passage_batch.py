@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -16,6 +17,8 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from scripts.smoke_model_gate_passage import run_smoke
+
+SAMPLE_NAME_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
 
 
 def main() -> None:
@@ -123,6 +126,11 @@ def validate_manifest_samples(
         name = sample.get("name")
         if not name:
             raise SystemExit("each sample requires `name`")
+        if not isinstance(name, str) or not SAMPLE_NAME_PATTERN.fullmatch(name):
+            raise SystemExit(
+                "sample name must use only letters, numbers, dots, underscores, "
+                f"or hyphens: {name}"
+            )
         if name in seen_names:
             raise SystemExit(f"duplicate sample name: {name}")
         seen_names.add(name)

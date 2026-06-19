@@ -108,7 +108,9 @@ gateguard-ai/
 `gate_passage` 이벤트는 백엔드의 우대카드 부정사용 매칭을 위해 `signals`를 첨부할 수 있다.
 기본 설정은 모델 없이 track 속도와 bbox scale에서 약한 연령대 보조 신호만 만든다.
 `pose_estimator.enabled` 또는 `age_estimator.enabled`를 켜면 모델 결과를 우선 사용한다.
-성별은 MiVOLO 같은 실제 모델이 붙기 전까지 `perceived_gender="unknown"`으로 두며, 자동 확정 판단은 백엔드의 confidence 정책을 따른다.
+성별은 `age_estimator.enabled=false` 상태에서는 `perceived_gender="unknown"`으로 둔다.
+HF MiVOLO v2 같은 실제 모델을 켜면 모델이 반환한 `perceived_gender`와
+`gender_confidence`를 보조 신호로 첨부하되, 자동 확정 판단은 백엔드의 confidence 정책을 따른다.
 
 ### Optional model setup
 

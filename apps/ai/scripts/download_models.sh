@@ -65,7 +65,11 @@ else:
 PY
 
 cat <<'EOF'
-[mivolo] age/gender checkpoint is not auto-downloaded by this script.
+[hf-mivolo-v2] HuggingFace MiVOLO v2 is cached by the setup check:
+           python scripts/check_model_setup.py --hf-mivolo-v2
+         It still requires the optional mivolo runtime package; see README.
+
+[mivolo] original age/gender checkpoint is not auto-downloaded by this script.
          The original MiVOLO package expects a .pth.tar checkpoint such as
          models/mivolo_imbd.pth.tar from the upstream README's checkpoint link.
          After placing it there, run:

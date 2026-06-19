@@ -36,7 +36,10 @@ jobs:
           pip install ruff pytest
 
       - name: Lint
-        run: ruff check src scripts
+        run: ruff check src scripts tests
+
+      - name: Compile
+        run: python -m compileall -q src scripts tests
 
       - name: Test
-        run: pytest -q tests || echo "no tests yet"
+        run: pytest -q tests

@@ -17,6 +17,7 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from scripts.smoke_model_gate_passage import run_smoke
+from src.zone import load_sections
 
 SAMPLE_NAME_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
 
@@ -29,6 +30,7 @@ def main() -> None:
         min_passed_samples=args.min_passed_samples,
         check_paths=True,
     )
+    validate_json_file(Path(args.config), "default pipeline config")
     if args.preflight_only:
         print(
             "preflight:",
@@ -179,9 +181,12 @@ def validate_manifest_samples(
                 raise SystemExit(f"sample {name} video not found: {video}")
             if not Path(sections).exists():
                 raise SystemExit(f"sample {name} sections config not found: {sections}")
+            validate_sections_config(Path(sections), sample_name=name)
             config = sample.get("config")
-            if config and not Path(config).exists():
-                raise SystemExit(f"sample {name} pipeline config not found: {config}")
+            if config:
+                if not Path(config).exists():
+                    raise SystemExit(f"sample {name} pipeline config not found: {config}")
+                validate_json_file(Path(config), f"sample {name} pipeline config")
 
 
 def _float_field(sample: dict[str, Any], field: str, default: float) -> float:
@@ -206,6 +211,22 @@ def validate_output_path(output: str, sample_name: str = "sample") -> None:
         raise SystemExit(f"sample {sample_name} output must not contain '..': {output}")
     if output_path.name in {"", ".", ".."}:
         raise SystemExit(f"sample {sample_name} output must include a file name: {output}")
+
+
+def validate_json_file(path: Path, label: str) -> None:
+    try:
+        json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise SystemExit(f"{label} is not valid JSON: {path}") from exc
+
+
+def validate_sections_config(path: Path, sample_name: str = "sample") -> None:
+    try:
+        _camera_id, sections = load_sections(path)
+    except Exception as exc:
+        raise SystemExit(f"sample {sample_name} sections config is invalid: {path}") from exc
+    if not sections:
+        raise SystemExit(f"sample {sample_name} sections config has no active sections: {path}")
 
 
 def sample_to_args(sample: dict[str, Any], defaults: argparse.Namespace) -> SimpleNamespace:

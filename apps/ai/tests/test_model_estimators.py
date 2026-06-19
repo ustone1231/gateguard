@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 import numpy as np
 import pytest
 
@@ -329,4 +331,79 @@ def test_model_gate_passage_batch_manifest_preflight_rejects_bad_samples():
                     "output": "/tmp/outside.jsonl",
                 }
             ]
+        )
+
+
+def test_model_gate_passage_batch_manifest_preflight_rejects_invalid_referenced_json(
+    tmp_path,
+):
+    video = tmp_path / "sample.mov"
+    video.touch()
+    bad_sections = tmp_path / "bad_sections.json"
+    bad_sections.write_text("{not-json", encoding="utf-8")
+    valid_sections = tmp_path / "sections.json"
+    valid_sections.write_text(
+        json.dumps(
+            {
+                "camera_id": "camera_001",
+                "sections": [
+                    {
+                        "id": "gate_01",
+                        "section_no": 1,
+                        "polygon": [[0, 0], [10, 0], [10, 10], [0, 10]],
+                        "entry_line": [[0, 5], [10, 5]],
+                        "exit_line": [[0, 8], [10, 8]],
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    bad_config = tmp_path / "bad_pipeline.json"
+    bad_config.write_text("{not-json", encoding="utf-8")
+
+    with pytest.raises(SystemExit):
+        validate_manifest_samples(
+            [
+                {
+                    "name": "bad_sections_json",
+                    "video": str(video),
+                    "sections": str(bad_sections),
+                }
+            ],
+            check_paths=True,
+        )
+    with pytest.raises(SystemExit):
+        validate_manifest_samples(
+            [
+                {
+                    "name": "bad_config_json",
+                    "video": str(video),
+                    "sections": str(valid_sections),
+                    "config": str(bad_config),
+                }
+            ],
+            check_paths=True,
+        )
+
+
+def test_model_gate_passage_batch_manifest_preflight_rejects_empty_sections(tmp_path):
+    video = tmp_path / "sample.mov"
+    video.touch()
+    sections = tmp_path / "sections.json"
+    sections.write_text(
+        json.dumps({"camera_id": "camera_001", "sections": []}),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(SystemExit):
+        validate_manifest_samples(
+            [
+                {
+                    "name": "empty_sections",
+                    "video": str(video),
+                    "sections": str(sections),
+                }
+            ],
+            check_paths=True,
         )

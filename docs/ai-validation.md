@@ -144,6 +144,9 @@ python scripts/smoke_model_gate_passage_batch.py \
   --preflight-only
 ```
 
+preflight는 영상/설정 파일 존재 여부, pipeline JSON 파싱, gate section JSON 파싱,
+active section 존재 여부를 확인한다.
+
 샘플 manifest는 다음 필드를 가진다:
 
 - `name`: 샘플 이름. 영문/숫자/`.`/`_`/`-`만 사용한다.

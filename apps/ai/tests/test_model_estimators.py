@@ -106,3 +106,5 @@ def test_model_gate_passage_smoke_validator_requires_model_signals():
     assert summary["event_count"] == 3
     assert summary["gate_passage_count"] == 2
     assert summary["model_signal_gate_passage_count"] == 1
+    assert summary["high_confidence_gender_gate_passage_count"] == 1
+    assert summary["high_confidence_gender_threshold"] == 0.8

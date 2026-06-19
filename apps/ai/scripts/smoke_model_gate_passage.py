@@ -30,6 +30,7 @@ REQUIRED_SIGNAL_FIELDS = (
     "perceived_gender",
     "gender_confidence",
 )
+HIGH_CONFIDENCE_GENDER_THRESHOLD = 0.80
 
 
 def main() -> None:
@@ -119,15 +120,26 @@ def read_jsonl(path: Path) -> list[dict[str, Any]]:
 def validate_gate_passage_signals(events: list[dict[str, Any]]) -> dict[str, Any]:
     gate_passages = [event for event in events if event.get("event_type") == "gate_passage"]
     model_signal_events = []
+    high_confidence_gender_events = []
     for event in gate_passages:
         signals = event.get("signals") or {}
         if all(signals.get(field) is not None for field in REQUIRED_SIGNAL_FIELDS):
             model_signal_events.append(event)
+        gender = signals.get("perceived_gender")
+        gender_confidence = signals.get("gender_confidence")
+        if (
+            gender in {"male", "female"}
+            and isinstance(gender_confidence, (int, float))
+            and gender_confidence >= HIGH_CONFIDENCE_GENDER_THRESHOLD
+        ):
+            high_confidence_gender_events.append(event)
 
     return {
         "event_count": len(events),
         "gate_passage_count": len(gate_passages),
         "model_signal_gate_passage_count": len(model_signal_events),
+        "high_confidence_gender_gate_passage_count": len(high_confidence_gender_events),
+        "high_confidence_gender_threshold": HIGH_CONFIDENCE_GENDER_THRESHOLD,
         "required_signal_fields": list(REQUIRED_SIGNAL_FIELDS),
     }
 

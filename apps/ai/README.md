@@ -111,6 +111,9 @@ gateguard-ai/
 
 ## md 명세 ↔ 코드 매핑
 
+현재 구현/검증 상태와 운영 enable 기준은
+[`docs/ai-validation.md`](../../docs/ai-validation.md)를 함께 본다.
+
 | md 명세 | 위치 |
 |---------|------|
 | Detector.detect / Tracker.update 인터페이스 | `src/detector/base.py`, `src/tracker/base.py` |

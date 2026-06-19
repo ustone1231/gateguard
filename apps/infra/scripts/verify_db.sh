@@ -2,6 +2,8 @@
 # verify_db.sh — GateGuard DB 스키마/마이그레이션 스모크 검증 (이슈 #16 제안 4)
 #
 # backend 컨테이너가 Alembic migration 을 실제로 적용해서
+#   - 단일 TimescaleDB 컨테이너
+#   - TimescaleDB extension 설치
 #   - TimescaleDB hypertable (events, fare_taps)
 #   - alembic_version = 최신 head
 #   - migration 0004 의 복합 PK (event_id/fare_tap_id + timestamp)
@@ -19,6 +21,7 @@ DB_CONTAINER="${DB_CONTAINER:-gateguard-db}"
 BACKEND_CONTAINER="${BACKEND_CONTAINER:-gateguard-backend}"
 PGUSER="${POSTGRES_USER:-gateguard}"
 PGDB="${POSTGRES_DB:-gateguard}"
+DB_NAME_PATTERN="${DB_NAME_PATTERN:-^gateguard-db($|[-_])}"
 
 fail=0
 pass() { printf '  ✓ %s\n' "$1"; }
@@ -32,13 +35,29 @@ fi
 
 psql_q() { docker exec "$DB_CONTAINER" psql -U "$PGUSER" -d "$PGDB" -At -c "$1"; }
 
-echo "== 1) TimescaleDB hypertables =="
+echo "== 1) DB topology =="
+db_container_count="$(docker ps --format '{{.Names}}' | grep -Ec "$DB_NAME_PATTERN" || true)"
+if [ "$db_container_count" = "1" ]; then
+  pass "단일 DB 컨테이너 실행 중 ($DB_CONTAINER)"
+else
+  bad "DB 컨테이너 수가 1개가 아님: $db_container_count (pattern: $DB_NAME_PATTERN)"
+fi
+
+echo "== 2) TimescaleDB extension =="
+timescale_ext="$(psql_q "select extversion from pg_extension where extname = 'timescaledb';")"
+if [ -n "$timescale_ext" ]; then
+  pass "timescaledb extension 설치됨 ($timescale_ext)"
+else
+  bad "timescaledb extension 미설치"
+fi
+
+echo "== 3) TimescaleDB hypertables =="
 hypertables="$(psql_q "select hypertable_name from timescaledb_information.hypertables order by 1;")"
 for t in events fare_taps; do
   if grep -qx "$t" <<<"$hypertables"; then pass "hypertable: $t"; else bad "hypertable 누락: $t"; fi
 done
 
-echo "== 2) alembic_version =="
+echo "== 4) alembic_version =="
 if [ "$(psql_q "select to_regclass('public.alembic_version') is not null;")" = "t" ]; then
   ver="$(psql_q "select version_num from alembic_version;")"
   if [ -n "$ver" ]; then
@@ -57,7 +76,7 @@ else
   bad "alembic_version 테이블 없음 (migration 미실행)"
 fi
 
-echo "== 3) 복합 PK (migration 0004) =="
+echo "== 5) 복합 PK (migration 0004) =="
 for spec in "events:event_id" "fare_taps:fare_tap_id"; do
   tbl="${spec%%:*}"; idcol="${spec##*:}"
   pkdef="$(psql_q "select pg_get_constraintdef(oid) from pg_constraint where contype='p' and conrelid='${tbl}'::regclass;")"

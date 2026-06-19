@@ -65,6 +65,12 @@ apps/infra/scripts/verify_db.sh
 fresh Docker DB 와 운영 DB 의 schema drift 방지용. 전부 통과하면 종료코드 `0`.
 배경: 이슈 #16 (Docker backend 가 migration 미실행 → hypertable 미적용).
 
+현재 MVP 배포 후보 장비는 Windows + Docker Desktop WSL2 + RTX 3060 12GB 단일
+PC이므로 DB도 단일 TimescaleDB 컨테이너를 기준으로 검증한다. `verify_db.sh`는
+중복 DB 컨테이너, TimescaleDB extension 누락, hypertable 누락, migration head
+drift를 함께 잡는다. replica/외부 DB 분리는 운영 병목이 확인된 뒤 별도
+마일스톤에서 다룬다.
+
 ## 릴리즈 절차
 
 [`docs/release.md`](../../docs/release.md) 참고.

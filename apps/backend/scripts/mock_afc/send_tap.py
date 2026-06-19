@@ -33,6 +33,7 @@ def main() -> None:
     tap = build_tap(
         gate_section_id=args.gate,
         card_category=args.category,
+        holder_gender=args.holder_gender,
         result=args.result,
     )
 
@@ -60,7 +61,7 @@ def main() -> None:
         print(f"❌ 오류: {e}")
 
 
-def build_tap(gate_section_id: str, card_category: str, result: str) -> dict:
+def build_tap(gate_section_id: str, card_category: str, holder_gender: str, result: str) -> dict:
     ts_ms = int(time.time() * 1000)
     uid = uuid.uuid4().hex[:8]
     card_raw = f"mock_card_{uid}"
@@ -76,6 +77,7 @@ def build_tap(gate_section_id: str, card_category: str, result: str) -> dict:
         "gate_section_id": gate_section_id,
         "card_id_hash": card_id_hash,
         "card_category": card_category,
+        "holder_gender": holder_gender,
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "result": result,
         "raw_meta": {
@@ -104,6 +106,12 @@ def parse_args() -> argparse.Namespace:
         default="approved",
         choices=["approved", "denied", "error"],
         help="결제 결과 (기본: approved)",
+    )
+    parser.add_argument(
+        "--holder-gender",
+        default="unknown",
+        choices=["male", "female", "unknown"],
+        help="카드 등록 성별 (기본: unknown)",
     )
     return parser.parse_args()
 

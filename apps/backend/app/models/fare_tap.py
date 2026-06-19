@@ -5,6 +5,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.models.event import Gender
+
 
 class FareTap(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -14,6 +16,7 @@ class FareTap(BaseModel):
     gate_section_id: str
     card_id_hash: str = Field(pattern=r"^sha256:[a-f0-9]{64}$")
     card_category: Literal["regular", "senior", "child", "disabled", "national_merit"]
+    holder_gender: Gender = "unknown"
     timestamp: datetime
     result: Literal["approved", "denied", "error"]
     raw_meta: dict[str, Any] = Field(default_factory=dict)

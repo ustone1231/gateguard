@@ -178,13 +178,7 @@ class InMemoryStore:
         updated = event.model_copy(update={"afc_match": afc_match})
         self.events[event.event_id] = updated
 
-        if (
-            tap.card_category in {"senior", "child"}
-            and updated.signals
-            and updated.signals.senior_probability is not None
-            and updated.signals.senior_probability < 0.20
-            and updated.reliability == "high"
-        ):
+        if self._eligibility_mismatch(updated, tap):
             if self._has_derived_event(updated, "confirmed_misuse"):
                 return []
             misuse = self._derived_event(
@@ -209,12 +203,38 @@ class InMemoryStore:
             return [misuse]
         return []
 
+    def _eligibility_mismatch(self, event: Event, tap: FareTap) -> bool:
+        signals = event.signals
+        if event.reliability != "high" or signals is None:
+            return False
+
+        if (
+            tap.card_category == "senior"
+            and signals.senior_probability is not None
+            and signals.senior_probability < 0.20
+        ):
+            return True
+        if (
+            tap.card_category == "child"
+            and signals.child_probability is not None
+            and signals.child_probability < 0.20
+        ):
+            return True
+        return (
+            tap.holder_gender in {"male", "female"}
+            and signals.perceived_gender in {"male", "female"}
+            and tap.holder_gender != signals.perceived_gender
+            and signals.gender_confidence is not None
+            and signals.gender_confidence >= 0.80
+        )
+
     def _afc_match_for_tap(self, event: Event, tap: FareTap) -> AfcMatch:
         delta_ms = int((tap.timestamp - event.timestamp).total_seconds() * 1000)
         return AfcMatch(
             fare_tap_id=tap.fare_tap_id,
             card_id_hash=tap.card_id_hash,
             card_category=tap.card_category,
+            holder_gender=tap.holder_gender,
             tap_timestamp=tap.timestamp,
             time_delta_ms=delta_ms,
         )

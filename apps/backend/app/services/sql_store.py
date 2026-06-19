@@ -40,6 +40,7 @@ class FareTapRow(Base):
     result: Mapped[str] = mapped_column(String(20), index=True)
     card_id_hash: Mapped[str | None] = mapped_column(String(80), nullable=True)
     card_category: Mapped[str | None] = mapped_column(String(30), nullable=True, index=True)
+    holder_gender: Mapped[str | None] = mapped_column(String(10), nullable=True, index=True)
     payload_json: Mapped[str] = mapped_column(Text)
     stored_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
@@ -355,6 +356,7 @@ def fare_tap_to_row(tap: FareTap) -> FareTapRow:
         result=tap.result,
         card_id_hash=tap.card_id_hash,
         card_category=tap.card_category,
+        holder_gender=tap.holder_gender,
         payload_json=tap.model_dump_json(),
         stored_at=tap.stored_at or now_utc(),
     )

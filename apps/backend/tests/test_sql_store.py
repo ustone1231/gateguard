@@ -49,6 +49,8 @@ def test_sql_store_persists_events_and_matching(tmp_path) -> None:
     _, _, second_derived = store.save_event(EventCreate.model_validate(other_event_payload))
     assert second_derived == []
     assert len(store.list_events(event_type="confirmed_misuse")) == 1
+    assert store.count_events() == 3
+    assert store.count_events(event_type="confirmed_misuse") == 1
 
 
 def test_sql_store_flushes_mature_unpaid_events(tmp_path, monkeypatch) -> None:

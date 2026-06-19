@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, Integer, String, Text, UniqueConstraint, create_engine, select
+from sqlalchemy import DateTime, Float, Integer, String, Text, UniqueConstraint, create_engine, func, select
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
 from app.models import Event, EventCreate, FareTap
@@ -151,18 +151,71 @@ class SqlStore:
         gate_section_id: str | None = None,
         severity: str | None = None,
         limit: int = 50,
+        from_time=None,
+        to_time=None,
+        cursor_after=None,
     ) -> list[Event]:
         self.flush_matching()
         with self.session_factory() as session:
-            query = select(EventRow).order_by(EventRow.timestamp.desc())
-            if event_type:
-                query = query.where(EventRow.event_type == event_type)
-            if gate_section_id:
-                query = query.where(EventRow.gate_section_id == gate_section_id)
-            if severity:
-                query = query.where(EventRow.severity == severity)
+            query = self._event_filters(
+                select(EventRow).order_by(EventRow.timestamp.desc(), EventRow.event_id.desc()),
+                event_type=event_type,
+                gate_section_id=gate_section_id,
+                severity=severity,
+                from_time=from_time,
+                to_time=to_time,
+                cursor_after=cursor_after,
+            )
             rows = session.execute(query.limit(limit)).scalars().all()
             return [event_from_row(row) for row in rows]
+
+    def count_events(
+        self,
+        event_type: str | None = None,
+        gate_section_id: str | None = None,
+        severity: str | None = None,
+        from_time=None,
+        to_time=None,
+    ) -> int:
+        self.flush_matching()
+        with self.session_factory() as session:
+            query = self._event_filters(
+                select(func.count()).select_from(EventRow),
+                event_type=event_type,
+                gate_section_id=gate_section_id,
+                severity=severity,
+                from_time=from_time,
+                to_time=to_time,
+            )
+            return session.execute(query).scalar_one()
+
+    def _event_filters(
+        self,
+        query,
+        event_type: str | None = None,
+        gate_section_id: str | None = None,
+        severity: str | None = None,
+        from_time=None,
+        to_time=None,
+        cursor_after=None,
+    ):
+        if event_type:
+            query = query.where(EventRow.event_type == event_type)
+        if gate_section_id:
+            query = query.where(EventRow.gate_section_id == gate_section_id)
+        if severity:
+            query = query.where(EventRow.severity == severity)
+        if from_time:
+            query = query.where(EventRow.timestamp >= from_time)
+        if to_time:
+            query = query.where(EventRow.timestamp <= to_time)
+        if cursor_after:
+            cursor_ts, cursor_id = cursor_after
+            query = query.where(
+                (EventRow.timestamp < cursor_ts)
+                | ((EventRow.timestamp == cursor_ts) & (EventRow.event_id < cursor_id))
+            )
+        return query
 
     @property
     def events(self) -> dict[str, Event]:

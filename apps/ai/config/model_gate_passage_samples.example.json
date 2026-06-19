@@ -1,0 +1,12 @@
+{
+  "samples": [
+    {
+      "name": "local_gate_01",
+      "video": "../../videos/gateguard_test_video.mov",
+      "sections": "config/gate_sections.local.json",
+      "start_sec": 11.5,
+      "max_frames": 90,
+      "min_signal_events": 1
+    }
+  ]
+}

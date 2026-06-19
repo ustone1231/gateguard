@@ -105,12 +105,29 @@ python scripts/smoke_model_gate_passage.py ../../videos/gateguard_test_video.mov
 - 이벤트 JSONL에 `signals.face_age_estimate`, `signals.estimated_age_group`,
   `signals.perceived_gender`, `signals.gender_confidence` 포함
 
+여러 샘플을 같은 기준으로 검증:
+
+```bash
+cd apps/ai
+python scripts/smoke_model_gate_passage_batch.py \
+  config/model_gate_passage_samples.example.json
+```
+
+샘플 manifest는 다음 필드를 가진다:
+
+- `name`: 샘플 이름
+- `video`: 영상 경로
+- `sections`: gate section config 경로
+- `start_sec`: 검증 시작 시각
+- `max_frames`: 처리할 프레임 수
+- `min_signal_events`: 최소 모델 signals 포함 `gate_passage` 수
+
 ## 운영 enable 기준
 
 `age_estimator.enabled=true`를 운영/통합 demo 기본값으로 바꾸기 전 조건:
 
 1. 최소 3개 이상의 서로 다른 게이트/각도/조명 샘플에서
-   `smoke_model_gate_passage.py` 통과
+   `smoke_model_gate_passage_batch.py` 통과
 2. 정상 통과 케이스에서 line jitter 중복이 허용 범위인지 확인
 3. `gender_confidence >= 0.80` 조건이 과도한 오탐을 만들지 않는지 샘플 리뷰
 4. senior/child mismatch는 자동 확정이 아니라 review queue 우선순위 보조로 표시

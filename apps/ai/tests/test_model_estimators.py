@@ -16,6 +16,7 @@ from src.rules.base import TrackSnapshot
 from src.eligibility_signals import EligibilitySignalEstimator
 from src.types import Track
 from scripts.smoke_model_gate_passage import validate_gate_passage_signals
+from scripts.smoke_model_gate_passage_batch import summarize_batch
 
 
 def test_null_model_estimators_are_noops():
@@ -108,3 +109,32 @@ def test_model_gate_passage_smoke_validator_requires_model_signals():
     assert summary["model_signal_gate_passage_count"] == 1
     assert summary["high_confidence_gender_gate_passage_count"] == 1
     assert summary["high_confidence_gender_threshold"] == 0.8
+
+
+def test_model_gate_passage_batch_summary_rolls_up_samples():
+    results = [
+        {
+            "passed": True,
+            "summary": {
+                "gate_passage_count": 3,
+                "model_signal_gate_passage_count": 3,
+                "high_confidence_gender_gate_passage_count": 2,
+            },
+        },
+        {
+            "passed": False,
+            "summary": {
+                "gate_passage_count": 1,
+                "model_signal_gate_passage_count": 0,
+                "high_confidence_gender_gate_passage_count": 0,
+            },
+        },
+    ]
+
+    summary = summarize_batch(results)
+
+    assert summary["sample_count"] == 2
+    assert summary["passed_count"] == 1
+    assert summary["gate_passage_count"] == 4
+    assert summary["model_signal_gate_passage_count"] == 3
+    assert summary["high_confidence_gender_gate_passage_count"] == 2

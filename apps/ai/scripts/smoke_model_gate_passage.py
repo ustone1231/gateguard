@@ -35,6 +35,18 @@ HIGH_CONFIDENCE_GENDER_THRESHOLD = 0.80
 
 def main() -> None:
     args = parse_args()
+    result = run_smoke(args)
+    print("stats:", json.dumps(result["stats"], ensure_ascii=False, sort_keys=True))
+    print("summary:", json.dumps(result["summary"], ensure_ascii=False, sort_keys=True))
+    if result["summary"]["model_signal_gate_passage_count"] < args.min_signal_events:
+        raise SystemExit(
+            "model-backed gate_passage signals not found: "
+            f"required={args.min_signal_events}, "
+            f"actual={result['summary']['model_signal_gate_passage_count']}"
+        )
+
+
+def run_smoke(args: argparse.Namespace) -> dict[str, Any]:
     video_path = Path(args.video)
     sections_path = Path(args.sections)
     if not video_path.exists():
@@ -56,15 +68,7 @@ def main() -> None:
     )
     events = read_jsonl(output_path)
     summary = validate_gate_passage_signals(events)
-
-    print("stats:", json.dumps(stats, ensure_ascii=False, sort_keys=True))
-    print("summary:", json.dumps(summary, ensure_ascii=False, sort_keys=True))
-    if summary["model_signal_gate_passage_count"] < args.min_signal_events:
-        raise SystemExit(
-            "model-backed gate_passage signals not found: "
-            f"required={args.min_signal_events}, "
-            f"actual={summary['model_signal_gate_passage_count']}"
-        )
+    return {"stats": stats, "summary": summary, "output": str(output_path)}
 
 
 def parse_args() -> argparse.Namespace:

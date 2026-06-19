@@ -65,6 +65,13 @@ python scripts/smoke_model_gate_passage.py ../../videos/gateguard_test_video.mov
 이 테스트는 HF MiVOLO v2와 YOLO를 함께 CPU에서 돌리므로 단위 테스트보다 느리다.
 모델 revision이나 gate section 좌표를 바꾼 뒤에는 반드시 다시 실행한다.
 
+여러 샘플을 한 번에 검증할 때:
+
+```bash
+python scripts/smoke_model_gate_passage_batch.py \
+  config/model_gate_passage_samples.example.json
+```
+
 ### Gate section 좌표 찍기
 
 실제 영상 첫 프레임에서 `polygon`, `entry_line`, `exit_line` 좌표를 클릭해서 JSON으로 출력:

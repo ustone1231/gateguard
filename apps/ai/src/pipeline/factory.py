@@ -9,8 +9,10 @@ import json
 import os
 from pathlib import Path
 
+from ..age_estimator import MivoloAgeGenderEstimator, MivoloConfig, NullAgeGenderEstimator
 from ..detector import YoloDetector
 from ..eligibility_signals import EligibilitySignalConfig, EligibilitySignalEstimator
+from ..pose_estimator import NullPoseEstimator, UltralyticsPoseEstimator
 from ..tracker import ByteTrackTracker
 from ..publisher import FilePublisher, HttpPublisher
 from ..rules import (
@@ -64,6 +66,9 @@ def build_from_config(
 
     # Tracker
     tracker = ByteTrackTracker()
+
+    pose_estimator = _build_pose_estimator(cfg)
+    age_gender_estimator = _build_age_gender_estimator(cfg)
 
     # Section matcher
     matcher = SectionMatcher(sections)
@@ -139,4 +144,36 @@ def build_from_config(
         publisher=publisher,
         camera_id=camera_id,
         visualizer=visualizer,
+        pose_estimator=pose_estimator,
+        age_gender_estimator=age_gender_estimator,
+    )
+
+
+def _build_pose_estimator(cfg: dict):
+    pose_cfg = cfg.get("pose_estimator", {})
+    if not pose_cfg.get("enabled", False):
+        return NullPoseEstimator()
+    return UltralyticsPoseEstimator(
+        weights=pose_cfg.get("weights", "models/yolo11n-pose.pt"),
+        device=pose_cfg.get("device", cfg.get("model", {}).get("device", "auto")),
+        conf_threshold=pose_cfg.get("conf_threshold", 0.35),
+        iou_match_threshold=pose_cfg.get("iou_match_threshold", 0.30),
+    )
+
+
+def _build_age_gender_estimator(cfg: dict):
+    age_cfg = cfg.get("age_estimator", {})
+    if not age_cfg.get("enabled", False):
+        return NullAgeGenderEstimator()
+    if age_cfg.get("type", "mivolo") != "mivolo":
+        raise ValueError(f"Unsupported age_estimator.type: {age_cfg.get('type')}")
+    return MivoloAgeGenderEstimator(
+        MivoloConfig(
+            detector_weights=age_cfg.get("detector_weights", "models/yolov8x_person_face.pt"),
+            checkpoint=age_cfg.get("checkpoint", "models/mivolo_imbd.pth.tar"),
+            device=age_cfg.get("device", cfg.get("model", {}).get("device", "cpu")),
+            with_persons=age_cfg.get("with_persons", True),
+            disable_faces=age_cfg.get("disable_faces", False),
+            iou_match_threshold=age_cfg.get("iou_match_threshold", 0.30),
+        )
     )

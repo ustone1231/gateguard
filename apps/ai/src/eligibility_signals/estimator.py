@@ -43,17 +43,27 @@ class EligibilitySignalEstimator:
             return None
 
         gait_score = self._gait_senior_score(history)
+        pose_score = snapshot.pose_senior_score
+        face_age_score = self._face_senior_score(snapshot.face_age_estimate)
         child_probability = self._child_probability(snapshot)
-        senior_probability = self._senior_probability(gait_score, child_probability)
+        senior_probability = self._senior_probability(
+            gait_score=gait_score,
+            child_probability=child_probability,
+            pose_score=pose_score,
+            face_age_score=face_age_score,
+        )
         estimated_age_group, confidence = self._age_group(senior_probability, child_probability)
 
         return Signals(
+            face_age_estimate=snapshot.face_age_estimate,
+            pose_senior_score=round(pose_score, 3) if pose_score is not None else None,
             gait_senior_score=round(gait_score, 3),
             senior_probability=round(senior_probability, 3),
             child_probability=round(child_probability, 3),
             estimated_age_group=estimated_age_group,
-            age_group_confidence=round(confidence, 3),
-            perceived_gender="unknown",
+            age_group_confidence=round(snapshot.age_group_confidence or confidence, 3),
+            perceived_gender=snapshot.perceived_gender or "unknown",
+            gender_confidence=snapshot.gender_confidence,
         )
 
     def _gait_senior_score(self, history: TrackHistory) -> float:
@@ -77,6 +87,15 @@ class EligibilitySignalEstimator:
         return _clamp(0.8 - ratio * 0.65)
 
     def _child_probability(self, snapshot: TrackSnapshot) -> float:
+        if snapshot.face_age_estimate is not None:
+            if snapshot.face_age_estimate <= 10:
+                return 0.9
+            if snapshot.face_age_estimate < 13:
+                return 0.65
+            if snapshot.face_age_estimate >= 16:
+                return 0.05
+            return 0.35
+
         height = max(0.0, snapshot.bbox[3] - snapshot.bbox[1])
         cfg = self._config
         if height <= cfg.child_bbox_height_px:
@@ -87,10 +106,34 @@ class EligibilitySignalEstimator:
         return _clamp(0.75 - ratio * 0.70)
 
     @staticmethod
-    def _senior_probability(gait_score: float, child_probability: float) -> float:
-        # In the MVP, gait is the only senior proxy. Child-like scale reduces
-        # senior probability so backend child/senior mismatch checks do not fight.
-        return _clamp(gait_score * (1.0 - child_probability * 0.75))
+    def _face_senior_score(age: float | None) -> float | None:
+        if age is None:
+            return None
+        if age >= 70:
+            return 0.9
+        if age >= 65:
+            return 0.75
+        if age <= 45:
+            return 0.05
+        return _clamp((age - 45.0) / 20.0 * 0.7)
+
+    @staticmethod
+    def _senior_probability(
+        gait_score: float,
+        child_probability: float,
+        pose_score: float | None,
+        face_age_score: float | None,
+    ) -> float:
+        weighted_sum = gait_score * 0.20
+        weight = 0.20
+        if face_age_score is not None:
+            weighted_sum += face_age_score * 0.40
+            weight += 0.40
+        if pose_score is not None:
+            weighted_sum += pose_score * 0.25
+            weight += 0.25
+        senior = weighted_sum / weight
+        return _clamp(senior * (1.0 - child_probability * 0.75))
 
     def _age_group(self, senior_probability: float, child_probability: float) -> tuple[str, float]:
         if child_probability >= 0.55:

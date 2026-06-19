@@ -10,6 +10,25 @@
     "type": "bytetrack",
     "config": "bytetrack.yaml"
   },
+  "pose_estimator": {
+    "enabled": false,
+    "_comment": "Set true after running scripts/download_models.sh. Uses Ultralytics YOLO pose and maps detections to ByteTrack tracks by IoU.",
+    "weights": "models/yolo11n-pose.pt",
+    "device": "auto",
+    "conf_threshold": 0.35,
+    "iou_match_threshold": 0.30
+  },
+  "age_estimator": {
+    "enabled": false,
+    "type": "mivolo",
+    "_comment": "Optional MiVOLO wrapper. Requires external package + weights; see scripts/download_models.sh and README.",
+    "detector_weights": "models/yolov8x_person_face.pt",
+    "checkpoint": "models/mivolo_imbd.pth.tar",
+    "device": "cpu",
+    "with_persons": true,
+    "disable_faces": false,
+    "iou_match_threshold": 0.30
+  },
   "eligibility_signals": {
     "enabled": true,
     "_comment": "MVP heuristic signals for backend v0.2.2 matching. Gender stays unknown until a real model is integrated.",

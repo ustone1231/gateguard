@@ -26,6 +26,11 @@ class TrackSnapshot:
     crossed_exit: Optional[str] = None
     crossed_entry_direction: Optional[int] = None
     crossed_exit_direction: Optional[int] = None
+    face_age_estimate: Optional[float] = None
+    pose_senior_score: Optional[float] = None
+    perceived_gender: Optional[str] = None
+    gender_confidence: Optional[float] = None
+    age_group_confidence: Optional[float] = None
 
 
 @dataclass

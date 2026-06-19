@@ -11,7 +11,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from src.age_estimator import MivoloAgeGenderEstimator, MivoloConfig
+from src.age_estimator import (
+    HfMivoloV2AgeGenderEstimator,
+    HfMivoloV2Config,
+    MivoloAgeGenderEstimator,
+    MivoloConfig,
+)
 from src.pose_estimator import UltralyticsPoseEstimator
 
 
@@ -33,6 +38,18 @@ def main() -> None:
         estimator.warmup()
         print(f"mivolo OK: {estimator.model_version}")
 
+    if args.hf_mivolo_v2:
+        estimator = HfMivoloV2AgeGenderEstimator(
+            HfMivoloV2Config(
+                model_id=args.hf_mivolo_model_id,
+                device=args.device,
+                torch_dtype=args.torch_dtype,
+                revision=args.hf_mivolo_revision,
+            )
+        )
+        estimator.warmup()
+        print(f"hf_mivolo_v2 OK: {estimator.model_version}")
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
@@ -42,6 +59,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--mivolo", action="store_true")
     parser.add_argument("--mivolo-detector-weights", default="models/yolov8x_person_face.pt")
     parser.add_argument("--mivolo-checkpoint", default="models/mivolo_imbd.pth.tar")
+    parser.add_argument("--hf-mivolo-v2", action="store_true")
+    parser.add_argument("--hf-mivolo-model-id", default="iitolstykh/mivolo_v2")
+    parser.add_argument("--hf-mivolo-revision", default=None)
+    parser.add_argument("--torch-dtype", default="float32")
     return parser.parse_args()
 
 

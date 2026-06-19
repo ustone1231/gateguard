@@ -9,7 +9,13 @@ import json
 import os
 from pathlib import Path
 
-from ..age_estimator import MivoloAgeGenderEstimator, MivoloConfig, NullAgeGenderEstimator
+from ..age_estimator import (
+    HfMivoloV2AgeGenderEstimator,
+    HfMivoloV2Config,
+    MivoloAgeGenderEstimator,
+    MivoloConfig,
+    NullAgeGenderEstimator,
+)
 from ..detector import YoloDetector
 from ..eligibility_signals import EligibilitySignalConfig, EligibilitySignalEstimator
 from ..pose_estimator import NullPoseEstimator, UltralyticsPoseEstimator
@@ -165,8 +171,18 @@ def _build_age_gender_estimator(cfg: dict):
     age_cfg = cfg.get("age_estimator", {})
     if not age_cfg.get("enabled", False):
         return NullAgeGenderEstimator()
-    if age_cfg.get("type", "mivolo") != "mivolo":
-        raise ValueError(f"Unsupported age_estimator.type: {age_cfg.get('type')}")
+    estimator_type = age_cfg.get("type", "hf_mivolo_v2")
+    if estimator_type == "hf_mivolo_v2":
+        return HfMivoloV2AgeGenderEstimator(
+            HfMivoloV2Config(
+                model_id=age_cfg.get("model_id", "iitolstykh/mivolo_v2"),
+                device=age_cfg.get("device", cfg.get("model", {}).get("device", "cpu")),
+                torch_dtype=age_cfg.get("torch_dtype", "float32"),
+                revision=age_cfg.get("revision"),
+            )
+        )
+    if estimator_type != "mivolo":
+        raise ValueError(f"Unsupported age_estimator.type: {estimator_type}")
     return MivoloAgeGenderEstimator(
         MivoloConfig(
             detector_weights=age_cfg.get("detector_weights", "models/yolov8x_person_face.pt"),

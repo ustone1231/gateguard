@@ -13,7 +13,7 @@ export default function Layout() {
   return (
     <div className={styles.shell}>
       <aside className={styles.sidebar}>
-        <div className={styles.logo}>🛡 GateGuard</div>
+        <div className={styles.logo}>🛡️ GateGuard</div>
         <nav className={styles.nav}>
           {NAV.map(({ to, label, end }) => (
             <NavLink

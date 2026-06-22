@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
+import axios from 'axios'
 import api from '../lib/api'
 import { getAccessToken } from '../lib/auth'
 import type { GateGuardEvent } from '../types/event'
@@ -33,6 +34,26 @@ const CARD_LABELS: Record<string, string> = {
   national_merit:'국가유공자',
 }
 
+const GENDER_LABELS: Record<string, string> = {
+  male:    '남성',
+  female:  '여성',
+  unknown: '미확인',
+}
+
+const AGE_GROUP_LABELS: Record<string, string> = {
+  child:   '어린이',
+  youth:   '청소년',
+  adult:   '성인',
+  senior:  '노인',
+  unknown: '미확인',
+}
+
+function confidenceText(value: number | null | undefined): string {
+  if (value == null) return ''
+  const pct = Math.round(value * 100)
+  return value >= 0.8 ? `${pct}%` : `${pct}% (검토 필요)`
+}
+
 const EVENT_LABELS: Record<string, string> = {
   confirmed_misuse:  '우대카드 부정사용',
   confirmed_unpaid:  '무임승차 확정',
@@ -41,6 +62,16 @@ const EVENT_LABELS: Record<string, string> = {
   crawling:          '기어가기',
   tailgating:        '꼬리물기',
   unpaid:            '우회/역방향',
+}
+
+const MATCH_STATUS_LABELS: Record<string, string> = {
+  confirmed_misuse:  '우대카드 부정 사용 의심',
+  confirmed_unpaid:  '결제 없음 의심',
+  gate_passage:      '정상 매칭',
+}
+
+function matchStatus(event: GateGuardEvent): string {
+  return MATCH_STATUS_LABELS[event.event_type] ?? '확인 필요'
 }
 
 function formatTime(ts: string) {
@@ -113,8 +144,8 @@ function DetailView({ queueId }: { queueId: string }) {
       })
       setItem((prev) => prev ? { ...prev, status: decision } : prev)
       showToast(decision === 'confirmed' ? '✅ 정탐으로 확인했습니다.' : '✅ 오탐으로 처리했습니다.', 'success')
-    } catch (e: any) {
-      if (e?.response?.status === 409) {
+    } catch (e: unknown) {
+      if (axios.isAxiosError(e) && e.response?.status === 409) {
         showToast('이미 다른 역무원이 처리했습니다.', 'error')
       } else {
         showToast('처리 중 오류가 발생했습니다.', 'error')
@@ -161,11 +192,17 @@ function DetailView({ queueId }: { queueId: string }) {
           {/* AFC 매칭 (api-contract.md §2-2, schema afc_match) */}
           {event.afc_match && (
             <section className={styles.section}>
-              <h3 className={styles.sectionTitle}>AFC 매칭</h3>
+              <h3 className={styles.sectionTitle}>카드 태그 기록</h3>
               <dl className={styles.dl}>
+                <dt>판단 상태</dt>
+                <dd>{matchStatus(event)}</dd>
+                <dt>fare tap ID</dt>
+                <dd>{event.afc_match.fare_tap_id}</dd>
                 <dt>카드 종류</dt>
                 <dd>{CARD_LABELS[event.afc_match.card_category] ?? event.afc_match.card_category}</dd>
-                <dt>결제 시각</dt>
+                <dt>카드 등록 성별</dt>
+                <dd>{GENDER_LABELS[event.afc_match.holder_gender] ?? event.afc_match.holder_gender}</dd>
+                <dt>태그 시각</dt>
                 <dd>{formatTime(event.afc_match.tap_timestamp)}</dd>
                 {event.afc_match.time_delta_ms != null && (
                   <><dt>시간 차이</dt><dd>{event.afc_match.time_delta_ms}ms</dd></>
@@ -183,6 +220,30 @@ function DetailView({ queueId }: { queueId: string }) {
                   <>
                     <dt>노인 확률</dt>
                     <dd><ProbBar value={prob} /></dd>
+                  </>
+                )}
+                {event.signals.child_probability != null && (
+                  <>
+                    <dt>어린이 확률</dt>
+                    <dd><ProbBar value={event.signals.child_probability} /></dd>
+                  </>
+                )}
+                {event.signals.perceived_gender != null && (
+                  <>
+                    <dt>AI 추정 성별</dt>
+                    <dd>
+                      {GENDER_LABELS[event.signals.perceived_gender] ?? event.signals.perceived_gender}
+                      {event.signals.gender_confidence != null && ` · ${confidenceText(event.signals.gender_confidence)}`}
+                    </dd>
+                  </>
+                )}
+                {event.signals.estimated_age_group != null && (
+                  <>
+                    <dt>AI 추정 연령대</dt>
+                    <dd>
+                      {AGE_GROUP_LABELS[event.signals.estimated_age_group] ?? event.signals.estimated_age_group}
+                      {event.signals.age_group_confidence != null && ` · ${confidenceText(event.signals.age_group_confidence)}`}
+                    </dd>
                   </>
                 )}
                 {event.signals.face_age_estimate != null && (
@@ -230,6 +291,13 @@ function DetailView({ queueId }: { queueId: string }) {
                   >
                     오탐 신고
                   </button>
+                  <button
+                    className={styles.btnHold}
+                    onClick={() => { showToast('확인 보류로 처리했습니다.', 'success'); navigate('/review-queue') }}
+                    disabled={submitting}
+                  >
+                    확인 보류
+                  </button>
                 </div>
               </>
             )}
@@ -251,36 +319,46 @@ function DetailView({ queueId }: { queueId: string }) {
 function ListView() {
   const navigate = useNavigate()
 
-  const [status, setStatus]       = useState<StatusFilter>('pending')
-  const [items, setItems]         = useState<ReviewQueueItem[]>([])
-  const [nextCursor, setNextCursor] = useState<string | null>(null)
+  const [status, setStatus]           = useState<StatusFilter>('pending')
+  const [items, setItems]             = useState<ReviewQueueItem[]>([])
+  const [nextCursor, setNextCursor]   = useState<string | null>(null)
   const [cursorStack, setCursorStack] = useState<string[]>([])
-  const [loading, setLoading]     = useState(false)
-  const [error, setError]         = useState('')
+  const [loading, setLoading] = useState(true)
+  const [error, setError]     = useState('')
 
-  async function fetchQueue(cursor?: string) {
-    setLoading(true)
-    setError('')
-    try {
-      const params: Record<string, string> = { status, limit: '50' }
-      if (cursor) params.cursor = cursor
-      const { data } = await api.get('/review-queue', { params })
-      setItems(data.data)
-      setNextCursor(data.next_cursor ?? null)
-    } catch {
-      setError('의심 큐를 불러올 수 없습니다.')
-    } finally {
-      setLoading(false)
-    }
-  }
+  // promise 체인 방식 — setState는 항상 비동기 콜백에서만 호출 (effect 내 cascading render 방지)
+  const fetchQueue = useCallback((cursor?: string) => {
+    const params: Record<string, string> = { status, limit: '50' }
+    if (cursor) params.cursor = cursor
+
+    api.get('/review-queue', { params })
+      .then(({ data }) => {
+        setItems(data.data)
+        setNextCursor(data.next_cursor ?? null)
+        setError('')
+        setLoading(false)
+      })
+      .catch(() => {
+        setError('의심 큐를 불러올 수 없습니다.')
+        setLoading(false)
+      })
+  }, [status])
 
   useEffect(() => {
-    setCursorStack([])
     fetchQueue()
-  }, [status])
+  }, [fetchQueue])
+
+  // setLoading/setError 초기화는 이벤트 핸들러에서 처리 (effect 내 직접 setState 방지)
+  function handleStatusChange(s: StatusFilter) {
+    setCursorStack([])
+    setLoading(true)
+    setError('')
+    setStatus(s)
+  }
 
   function handleNext() {
     if (!nextCursor) return
+    setLoading(true)
     setCursorStack((s) => [...s, nextCursor])
     fetchQueue(nextCursor)
   }
@@ -289,6 +367,7 @@ function ListView() {
     const stack = [...cursorStack]
     stack.pop()
     const prev = stack[stack.length - 1]
+    setLoading(true)
     setCursorStack(stack)
     fetchQueue(prev)
   }
@@ -303,7 +382,7 @@ function ListView() {
           <button
             key={s}
             className={`${styles.tab} ${status === s ? styles.active : ''}`}
-            onClick={() => setStatus(s)}
+            onClick={() => handleStatusChange(s)}
           >
             {STATUS_LABELS[s]}
           </button>

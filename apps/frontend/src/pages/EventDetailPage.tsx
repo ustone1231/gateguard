@@ -23,6 +23,32 @@ const CARD_LABELS: Record<string, string> = {
   national_merit:'국가유공자',
 }
 
+const GENDER_LABELS: Record<string, string> = {
+  male:    '남성',
+  female:  '여성',
+  unknown: '미확인',
+}
+
+const AGE_GROUP_LABELS: Record<string, string> = {
+  child:   '어린이',
+  youth:   '청소년',
+  adult:   '성인',
+  senior:  '노인',
+  unknown: '미확인',
+}
+
+const MATCH_STATUS_LABELS: Record<string, string> = {
+  confirmed_misuse: '우대카드 부정 사용 의심',
+  confirmed_unpaid: '결제 없음 의심',
+  gate_passage:     '정상 매칭',
+}
+
+function confidenceText(value: number | null | undefined): string {
+  if (value == null) return ''
+  const pct = Math.round(value * 100)
+  return value >= 0.8 ? `${pct}%` : `${pct}% (검토 필요)`
+}
+
 function formatTime(ts: string) {
   return new Date(ts).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })
 }
@@ -31,23 +57,34 @@ export default function EventDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
 
+  const [lastId, setLastId]   = useState(id)
   const [event, setEvent]     = useState<GateGuardEvent | null>(null)
   const [clipUrl, setClipUrl] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
   const [error, setError]     = useState('')
+
+  // id가 바뀌면 렌더 단계에서 상태 초기화 (effect 내 직접 setState 방지)
+  if (lastId !== id) {
+    setLastId(id)
+    setEvent(null)
+    setClipUrl(null)
+    setError('')
+  }
+
+  // event=null이고 error=''이면 로딩 중
+  const loading = !event && !error
 
   useEffect(() => {
     if (!id) return
-    setLoading(true)
 
-    // 이벤트 단건 조회
     api.get(`/events/${id}`)
       .then(({ data }) => setEvent(data))
       .catch(() => setError('이벤트를 불러올 수 없습니다.'))
-      .finally(() => setLoading(false))
+  }, [id])
 
-    // 영상 클립 서명 URL 획득 (api-contract.md §2-2)
-    const base = import.meta.env.VITE_API_BASE_URL
+  useEffect(() => {
+    if (!id) return
+
+    const base  = import.meta.env.VITE_API_BASE_URL
     const token = getAccessToken()
     fetch(`${base}/events/${id}/video-clip`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -127,6 +164,30 @@ export default function EventDetailPage() {
                     <dd>{Math.round(event.signals.senior_probability * 100)}%</dd>
                   </>
                 )}
+                {event.signals.child_probability != null && (
+                  <>
+                    <dt>어린이 확률</dt>
+                    <dd>{Math.round(event.signals.child_probability * 100)}%</dd>
+                  </>
+                )}
+                {event.signals.perceived_gender != null && (
+                  <>
+                    <dt>AI 추정 성별</dt>
+                    <dd>
+                      {GENDER_LABELS[event.signals.perceived_gender] ?? event.signals.perceived_gender}
+                      {event.signals.gender_confidence != null && ` · ${confidenceText(event.signals.gender_confidence)}`}
+                    </dd>
+                  </>
+                )}
+                {event.signals.estimated_age_group != null && (
+                  <>
+                    <dt>AI 추정 연령대</dt>
+                    <dd>
+                      {AGE_GROUP_LABELS[event.signals.estimated_age_group] ?? event.signals.estimated_age_group}
+                      {event.signals.age_group_confidence != null && ` · ${confidenceText(event.signals.age_group_confidence)}`}
+                    </dd>
+                  </>
+                )}
                 {event.signals.face_age_estimate != null && (
                   <>
                     <dt>추정 나이</dt>
@@ -146,11 +207,17 @@ export default function EventDetailPage() {
           {/* afc_match */}
           {event.afc_match && (
             <section className={styles.section}>
-              <h3 className={styles.sectionTitle}>AFC 매칭</h3>
+              <h3 className={styles.sectionTitle}>카드 태그 기록</h3>
               <dl className={styles.dl}>
+                <dt>판단 상태</dt>
+                <dd>{MATCH_STATUS_LABELS[event.event_type] ?? '확인 필요'}</dd>
+                <dt>fare tap ID</dt>
+                <dd>{event.afc_match.fare_tap_id}</dd>
                 <dt>카드 종류</dt>
                 <dd>{CARD_LABELS[event.afc_match.card_category] ?? event.afc_match.card_category}</dd>
-                <dt>결제 시각</dt>
+                <dt>카드 등록 성별</dt>
+                <dd>{GENDER_LABELS[event.afc_match.holder_gender] ?? event.afc_match.holder_gender}</dd>
+                <dt>태그 시각</dt>
                 <dd>{formatTime(event.afc_match.tap_timestamp)}</dd>
                 {event.afc_match.time_delta_ms != null && (
                   <>

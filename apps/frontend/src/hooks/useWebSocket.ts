@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { GateGuardEvent } from '../types/event'
 import { getAccessToken } from '../lib/auth'
 
@@ -12,7 +12,6 @@ export type WsMessage =
 
 interface UseWebSocketResult {
   isConnected: boolean
-  lastMessage: WsMessage | null
 }
 
 // 지수 백오프: 1s → 2s → 4s → ... → 30s
@@ -20,61 +19,70 @@ function backoff(attempt: number) {
   return Math.min(1000 * 2 ** attempt, 30000)
 }
 
-export function useWebSocket(): UseWebSocketResult {
-  const wsRef      = useRef<WebSocket | null>(null)
-  const attemptRef = useRef(0)
+export function useWebSocket(onMessage: (msg: WsMessage) => void): UseWebSocketResult {
+  const wsRef          = useRef<WebSocket | null>(null)
+  const attemptRef     = useRef(0)
   const lastEventIdRef = useRef<string | null>(null)
-  const [isConnected, setIsConnected]   = useState(false)
-  const [lastMessage, setLastMessage]   = useState<WsMessage | null>(null)
-
-  const connect = useCallback(() => {
-    const token = getAccessToken()
-    if (!token) return
-
-    const url = lastEventIdRef.current
-      ? `${WS_URL}?token=${token}&since=${lastEventIdRef.current}`
-      : `${WS_URL}?token=${token}`
-
-    const ws = new WebSocket(url)
-    wsRef.current = ws
-
-    ws.onopen = () => {
-      setIsConnected(true)
-      attemptRef.current = 0
-    }
-
-    ws.onmessage = (ev) => {
-      const msg: WsMessage = JSON.parse(ev.data)
-      if (msg.type === 'heartbeat') return
-      if (msg.type === 'event_new' || msg.type === 'event_updated') {
-        lastEventIdRef.current = msg.data.event_id
-      }
-      setLastMessage(msg)
-    }
-
-    ws.onclose = (ev) => {
-      setIsConnected(false)
-      wsRef.current = null
-
-      // 토큰 만료 (api-contract.md §11-6)
-      if (ev.code === 4401) {
-        import('../lib/auth').then(({ logout }) => logout())
-        return
-      }
-
-      // 지수 백오프 재연결
-      const delay = backoff(attemptRef.current)
-      attemptRef.current += 1
-      setTimeout(connect, delay)
-    }
-
-    ws.onerror = () => ws.close()
-  }, [])
+  const timerRef       = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const onMessageRef = useRef(onMessage)
+  const [isConnected, setIsConnected] = useState(false)
 
   useEffect(() => {
-    connect()
-    return () => wsRef.current?.close()
-  }, [connect])
+    onMessageRef.current = onMessage
+  })
 
-  return { isConnected, lastMessage }
+  useEffect(() => {
+    function connect() {
+      const token = getAccessToken()
+      if (!token) return
+
+      const url = lastEventIdRef.current
+        ? `${WS_URL}?token=${token}&since=${lastEventIdRef.current}`
+        : `${WS_URL}?token=${token}`
+
+      const ws = new WebSocket(url)
+      wsRef.current = ws
+
+      ws.onopen = () => {
+        setIsConnected(true)
+        attemptRef.current = 0
+      }
+
+      ws.onmessage = (ev) => {
+        const msg: WsMessage = JSON.parse(ev.data)
+        if (msg.type === 'heartbeat') return
+        if (msg.type === 'event_new' || msg.type === 'event_updated') {
+          lastEventIdRef.current = msg.data.event_id
+        }
+        onMessageRef.current(msg)
+      }
+
+      ws.onclose = (ev) => {
+        setIsConnected(false)
+        wsRef.current = null
+
+        // 토큰 만료 (api-contract.md §11-6)
+        if (ev.code === 4401) {
+          import('../lib/auth').then(({ logout }) => logout())
+          return
+        }
+
+        // 지수 백오프 재연결
+        const delay = backoff(attemptRef.current)
+        attemptRef.current += 1
+        timerRef.current = setTimeout(connect, delay)
+      }
+
+      ws.onerror = () => ws.close()
+    }
+
+    connect()
+
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current)
+      wsRef.current?.close()
+    }
+  }, [])
+
+  return { isConnected }
 }

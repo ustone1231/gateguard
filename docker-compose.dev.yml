@@ -62,10 +62,10 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - VITE_API_BASE_URL=http://localhost:8000/api/v1
+      - VITE_WS_URL=ws://localhost:8000/ws/v1/events
     depends_on:
       - backend
-    # TODO: 프론트 스택 결정 후 채움
 
   # ─── DB ────────────────────────────────────────────
   db:

@@ -273,8 +273,21 @@
   border: 1px solid #334155;
 }
 
+.btnHold {
+  flex: 1;
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #334155;
+  background: #1e293b;
+  color: #f59e0b;
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
 .btnConfirm:disabled,
-.btnFp:disabled {
+.btnFp:disabled,
+.btnHold:disabled {
   opacity: 0.4;
   cursor: default;
 }

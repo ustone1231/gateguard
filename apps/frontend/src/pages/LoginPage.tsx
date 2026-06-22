@@ -27,7 +27,7 @@ export default function LoginPage() {
   return (
     <div className={styles.container}>
       <form className={styles.card} onSubmit={handleSubmit}>
-        <h1 className={styles.title}>🛡 GateGuard</h1>
+        <h1 className={styles.title}>🛡️ GateGuard</h1>
         <p className={styles.subtitle}>역무원 관제 시스템</p>
 
         <div className={styles.field}>

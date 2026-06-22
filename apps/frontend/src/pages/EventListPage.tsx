@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../lib/api'
 import type { GateGuardEvent } from '../types/event'
@@ -41,42 +41,51 @@ export default function EventListPage() {
   const [events, setEvents]         = useState<GateGuardEvent[]>([])
   const [nextCursor, setNextCursor] = useState<string | null>(null)
   const [total, setTotal]           = useState<number>(0)
-  const [loading, setLoading]         = useState(false)
+  const [loading, setLoading]         = useState(true)
   const [fetchError, setFetchError]   = useState('')
   const [cursorStack, setCursorStack] = useState<string[]>([])
 
-  async function fetchEvents(cursor?: string) {
-    setLoading(true)
-    setFetchError('')
-    try {
-      const params: Record<string, string> = { limit: '50' }
-      if (filters.from)            params.from             = filters.from
-      if (filters.to)              params.to               = filters.to
-      if (filters.event_type)      params.event_type       = filters.event_type
-      if (filters.gate_section_id) params.gate_section_id  = filters.gate_section_id
-      if (filters.severity)        params.severity         = filters.severity
-      if (cursor)                  params.cursor           = cursor
+  // promise 체인 방식 — setState는 항상 비동기 콜백에서만 호출 (effect 내 cascading render 방지)
+  const fetchEvents = useCallback((cursor?: string) => {
+    const params: Record<string, string> = { limit: '50' }
+    if (filters.from)            params.from             = filters.from
+    if (filters.to)              params.to               = filters.to
+    if (filters.event_type)      params.event_type       = filters.event_type
+    if (filters.gate_section_id) params.gate_section_id  = filters.gate_section_id
+    if (filters.severity)        params.severity         = filters.severity
+    if (cursor)                  params.cursor           = cursor
 
-      const { data } = await api.get('/events', { params })
-      setEvents(data.data)
-      setNextCursor(data.next_cursor)
-      setTotal(data.total)
-    } catch {
-      setFetchError('이벤트를 불러올 수 없습니다.')
-      setEvents([])
-      setTotal(0)
-    } finally {
-      setLoading(false)
-    }
-  }
+    api.get('/events', { params })
+      .then(({ data }) => {
+        setEvents(data.data)
+        setNextCursor(data.next_cursor ?? null)
+        setTotal(data.total)
+        setFetchError('')
+        setLoading(false)
+      })
+      .catch(() => {
+        setFetchError('이벤트를 불러올 수 없습니다.')
+        setEvents([])
+        setTotal(0)
+        setLoading(false)
+      })
+  }, [filters])
 
   useEffect(() => {
-    setCursorStack([])
     fetchEvents()
-  }, [filters])
+  }, [fetchEvents])
+
+  // setLoading/setFetchError 초기화는 이벤트 핸들러에서 처리 (effect 내 직접 setState 방지)
+  function setFilter(key: keyof Filters, value: string) {
+    setCursorStack([])
+    setLoading(true)
+    setFetchError('')
+    setFilters((f) => ({ ...f, [key]: value }))
+  }
 
   function handleNext() {
     if (!nextCursor) return
+    setLoading(true)
     setCursorStack((s) => [...s, nextCursor])
     fetchEvents(nextCursor)
   }
@@ -85,12 +94,9 @@ export default function EventListPage() {
     const stack = [...cursorStack]
     stack.pop()
     const prev = stack[stack.length - 1]
+    setLoading(true)
     setCursorStack(stack)
     fetchEvents(prev)
-  }
-
-  function setFilter(key: keyof Filters, value: string) {
-    setFilters((f) => ({ ...f, [key]: value }))
   }
 
   return (

@@ -34,9 +34,30 @@ function formatTime(ts: string) {
 }
 
 export default function DashboardPage() {
-  const { isConnected, lastMessage } = useWebSocket()
   const [events, setEvents] = useState<GateGuardEvent[]>([])
   const [kpi, setKpi] = useState<KpiData>({ totalToday: 0, pending: 0, falsePositive: 0, health: 'unknown', byGate: {} })
+
+  const { isConnected } = useWebSocket((msg) => {
+    if (msg.type === 'event_new') {
+      const event = msg.data
+      setEvents((prev) => [event, ...prev].slice(0, 50))
+
+      playAlert(event.severity ?? 'info')
+
+      if (Notification.permission === 'granted') {
+        new Notification(`GateGuard — ${EVENT_LABELS[event.event_type] ?? event.event_type}`, {
+          body: `게이트 ${event.gate_section_id} · ${formatTime(event.timestamp)}`,
+        })
+      }
+    }
+
+    if (msg.type === 'event_updated') {
+      const updated = msg.data
+      setEvents((prev) =>
+        prev.map((e) => (e.event_id === updated.event_id ? updated : e))
+      )
+    }
+  })
 
   useEffect(() => {
     async function fetchKpi() {
@@ -74,32 +95,6 @@ export default function DashboardPage() {
       Notification.requestPermission()
     }
   }, [])
-
-  // 새 이벤트 수신 시 처리
-  useEffect(() => {
-    if (!lastMessage) return
-
-    if (lastMessage.type === 'event_new') {
-      const event = lastMessage.data
-      setEvents((prev) => [event, ...prev].slice(0, 50))
-
-      const severity = event.severity ?? 'info'
-      playAlert(severity)
-
-      if (Notification.permission === 'granted') {
-        new Notification(`GateGuard — ${EVENT_LABELS[event.event_type] ?? event.event_type}`, {
-          body: `게이트 ${event.gate_section_id} · ${formatTime(event.timestamp)}`,
-        })
-      }
-    }
-
-    if (lastMessage.type === 'event_updated') {
-      const updated = lastMessage.data
-      setEvents((prev) =>
-        prev.map((e) => (e.event_id === updated.event_id ? updated : e))
-      )
-    }
-  }, [lastMessage])
 
   return (
     <div className={styles.page}>
